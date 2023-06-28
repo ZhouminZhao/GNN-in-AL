@@ -1,0 +1,7 @@
+
+hydra:
+  slurm:
+    partition: gpu_all
+    job_name: GNN_AL
+    output: output.txt
+    error: error.txt

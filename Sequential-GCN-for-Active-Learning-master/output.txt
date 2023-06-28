@@ -1,0 +1,11 @@
+Dataset: cifar10
+Method type:Popular
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+>> Train a Model.
+>> Finished.
+Trial 1/5 || Cycle 1/10 || Label set size 1000: Test acc 44.96
+2000 7 49995
+48000 0 49999
+>> Train a Model.
