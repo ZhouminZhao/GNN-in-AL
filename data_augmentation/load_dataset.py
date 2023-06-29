@@ -55,9 +55,13 @@ class MyDataset(Dataset):
 
 # Data
 def load_dataset(dataset):
+    n = 2
+    m = 9
+    p = 0.5
     train_transform = T.Compose([
         T.RandomHorizontalFlip(),
         T.RandomCrop(size=32, padding=4),
+        T.RandomApply([RandAugment(num_ops=n, magnitude=m)], p=p),
         T.ToTensor(),
         T.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010])
         # T.Normalize((0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761)) # CIFAR-100
@@ -72,7 +76,7 @@ def load_dataset(dataset):
     if dataset == 'cifar10':
         data_train = CIFAR10('../cifar10', train=True, download=True, transform=train_transform)
 
-        '''
+
         # RandAugmentation
         n = 2
         m = 9
@@ -81,11 +85,18 @@ def load_dataset(dataset):
         randaugment_transform = T.Compose([
             T.ToPILImage(),
             T.RandomApply([RandAugment(num_ops=n, magnitude=m)], p=p),
-            T.ToTensor()
+            T.ToTensor(),
+            T.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010])
         ])
 
         augmented_data_train = []
         for image, label in data_train:
+            mean = [0.4914, 0.4822, 0.4465]
+            std = [0.2023, 0.1994, 0.2010]
+            mean_tensor = torch.tensor(mean)
+            std_tensor = torch.tensor(std)
+            denormalize = T.Normalize((-mean_tensor / std_tensor).tolist(), (1.0 / std_tensor).tolist())
+            image = denormalize(image)
             transformed_image = randaugment_transform(image)
             augmented_data_train.append((transformed_image, label))
 
@@ -104,7 +115,15 @@ def load_dataset(dataset):
 
         for i in range(5):
             original_image, _ = original_data_train[i]
+
             image, label = data_train[i]
+            mean = [0.4914, 0.4822, 0.4465]
+            std = [0.2023, 0.1994, 0.2010]
+            mean_tensor = torch.tensor(mean)
+            std_tensor = torch.tensor(std)
+            denormalize = T.Normalize((-mean_tensor / std_tensor).tolist(), (1.0 / std_tensor).tolist())
+            image = denormalize(image)
+
             augmented_image, _ = augmented_data_train[i]
 
             original_image = to_pil(original_image)
@@ -124,8 +143,9 @@ def load_dataset(dataset):
             axes[i, 2].set_title('RandAug: {}'.format(class_labels[label]))
 
         plt.tight_layout()
-        plt.show()          '''
+        plt.show()
 
+        '''
         # mixup & cutmix
         def get_dataset_and_loader(mixup_args):
             mixup_fn = Mixup(**mixup_args)
@@ -166,7 +186,7 @@ def load_dataset(dataset):
 
         inputs, classes = mixup_fn(inputs, classes)
         out = torchvision.utils.make_grid(inputs)
-        imshow(out, title=[x.item() for x in classes.argmax(1)])
+        imshow(out, title=[x.item() for x in classes.argmax(1)])    '''
 
 
         data_unlabeled = MyDataset(dataset, True, test_transform)
@@ -221,4 +241,4 @@ def load_dataset(dataset):
         NO_CLASSES = 10
         adden = ADDENDUM
         no_train = NUM_TRAIN
-    return augmented_data_train, data_unlabeled, data_test, adden, NO_CLASSES, no_train
+    return data_train, data_unlabeled, data_test, adden, NO_CLASSES, no_train
