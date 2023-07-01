@@ -11,6 +11,7 @@ from timm.data.mixup import Mixup
 from timm.data.dataset import ImageDataset
 from timm.data.loader import create_loader
 import torchvision
+from timm.data.random_erasing import RandomErasing
 
 
 class MyDataset(Dataset):
@@ -55,15 +56,13 @@ class MyDataset(Dataset):
 
 # Data
 def load_dataset(dataset):
-    n = 2
-    m = 9
-    p = 0.5
     train_transform = T.Compose([
         T.RandomHorizontalFlip(),
         T.RandomCrop(size=32, padding=4),
-        T.RandomApply([RandAugment(num_ops=n, magnitude=m)], p=p),
+        T.RandomApply([RandAugment(num_ops=2, magnitude=9)], p=0.5),
         T.ToTensor(),
-        T.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010])
+        T.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010]),
+        T.RandomErasing(p=0.25)
         # T.Normalize((0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761)) # CIFAR-100
     ])
 
@@ -75,30 +74,6 @@ def load_dataset(dataset):
 
     if dataset == 'cifar10':
         data_train = CIFAR10('../cifar10', train=True, download=True, transform=train_transform)
-
-
-        # RandAugmentation
-        n = 2
-        m = 9
-        p = 0.5
-
-        randaugment_transform = T.Compose([
-            T.ToPILImage(),
-            T.RandomApply([RandAugment(num_ops=n, magnitude=m)], p=p),
-            T.ToTensor(),
-            T.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010])
-        ])
-
-        augmented_data_train = []
-        for image, label in data_train:
-            mean = [0.4914, 0.4822, 0.4465]
-            std = [0.2023, 0.1994, 0.2010]
-            mean_tensor = torch.tensor(mean)
-            std_tensor = torch.tensor(std)
-            denormalize = T.Normalize((-mean_tensor / std_tensor).tolist(), (1.0 / std_tensor).tolist())
-            image = denormalize(image)
-            transformed_image = randaugment_transform(image)
-            augmented_data_train.append((transformed_image, label))
 
         # visualization
         original_train_transform = T.Compose([
@@ -116,19 +91,21 @@ def load_dataset(dataset):
         for i in range(5):
             original_image, _ = original_data_train[i]
 
-            image, label = data_train[i]
             mean = [0.4914, 0.4822, 0.4465]
             std = [0.2023, 0.1994, 0.2010]
             mean_tensor = torch.tensor(mean)
             std_tensor = torch.tensor(std)
             denormalize = T.Normalize((-mean_tensor / std_tensor).tolist(), (1.0 / std_tensor).tolist())
+
+            image, label = data_train[i]
             image = denormalize(image)
 
-            augmented_image, _ = augmented_data_train[i]
+            #augmented_image, _ = augmented_data_train[i]
+            #augmented_image = denormalize(augmented_image)
 
             original_image = to_pil(original_image)
             image = to_pil(image)
-            augmented_image = to_pil(augmented_image)
+            #augmented_image = to_pil(augmented_image)
 
             axes[i, 0].imshow(original_image)
             axes[i, 0].axis('off')
@@ -138,9 +115,9 @@ def load_dataset(dataset):
             axes[i, 1].axis('off')
             axes[i, 1].set_title('Augmented: {}'.format(class_labels[label]))
 
-            axes[i, 2].imshow(augmented_image)
-            axes[i, 2].axis('off')
-            axes[i, 2].set_title('RandAug: {}'.format(class_labels[label]))
+            #axes[i, 2].imshow(augmented_image)
+            #axes[i, 2].axis('off')
+            #axes[i, 2].set_title('Augmented: {}'.format(class_labels[label]))
 
         plt.tight_layout()
         plt.show()
@@ -187,7 +164,6 @@ def load_dataset(dataset):
         inputs, classes = mixup_fn(inputs, classes)
         out = torchvision.utils.make_grid(inputs)
         imshow(out, title=[x.item() for x in classes.argmax(1)])    '''
-
 
         data_unlabeled = MyDataset(dataset, True, test_transform)
         data_test = CIFAR10('../cifar10', train=False, download=True, transform=test_transform)
