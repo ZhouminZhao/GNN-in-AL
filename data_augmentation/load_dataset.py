@@ -13,6 +13,7 @@ import timm
 from timm.data.mixup import Mixup
 from timm.data.dataset import ImageDataset
 from timm.data.loader import create_loader
+from PIL import Image
 
 
 class MyDataset(Dataset):
@@ -76,7 +77,7 @@ def load_dataset(dataset):
     if dataset == 'cifar10':
         data_train = CIFAR10('../cifar10', train=True, download=True, transform=train_transform)
 
-        mixup_fn = Mixup(mixup_alpha=0.8, cutmix_alpha=1.0, num_classes=10)
+        mixup_fn = Mixup(prob=0.8, switch_prob=1.0, num_classes=10)
 
         data_tensor = torch.from_numpy(data_train.data)
         images = torch.stack([image.permute(0, 1, 2).float() for image in data_tensor])
@@ -87,6 +88,12 @@ def load_dataset(dataset):
         labels_list = labels.tolist()
         data_train.data = np.uint8(images_numpy)
         data_train.targets = labels_list
+
+        random_erasing = T.RandomErasing(p=0.25)
+        torch_tensor = torch.from_numpy(data_train.data.transpose((0, 3, 1, 2)))
+        erased_tensor = random_erasing(torch_tensor)
+        erased_data_train = erased_tensor.numpy().transpose((0, 2, 3, 1))
+        data_train.data = erased_data_train
 
         '''
         # visualization
@@ -100,10 +107,10 @@ def load_dataset(dataset):
             'airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck'
         ]
 
-        fig, axes = plt.subplots(5, 3, figsize=(8, 2.5 * 5))
+        fig, axes = plt.subplots(10, 2, figsize=(8, 2.5 * 5))
 
-        for i in range(5):
-            original_image, _ = original_data_train[i]
+        for i in range(10):
+            original_image, label = original_data_train[i]
 
             mean = [0.4914, 0.4822, 0.4465]
             std = [0.2023, 0.1994, 0.2010]
@@ -111,8 +118,8 @@ def load_dataset(dataset):
             std_tensor = torch.tensor(std)
             denormalize = T.Normalize((-mean_tensor / std_tensor).tolist(), (1.0 / std_tensor).tolist())
 
-            image, label = data_train[i]
-            image = denormalize(image)
+            image = data_train.data[i]
+            #image = denormalize(image)
 
             #augmented_image, _ = augmented_data_train[i]
             #augmented_image = denormalize(augmented_image)
@@ -134,7 +141,7 @@ def load_dataset(dataset):
             #axes[i, 2].set_title('Augmented: {}'.format(class_labels[label]))
 
         plt.tight_layout()
-        plt.show()'''
+        plt.show()  '''
 
         data_unlabeled = MyDataset(dataset, True, test_transform)
         data_test = CIFAR10('../cifar10', train=False, download=True, transform=test_transform)
