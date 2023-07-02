@@ -61,7 +61,10 @@ def train_epoch(models, method, criterion, optimizers, dataloaders, epoch, epoch
     for data in tqdm(dataloaders['train'], leave=False, total=len(dataloaders['train'])):
         with torch.cuda.device(CUDA_VISIBLE_DEVICES):
             inputs = data[0].cuda()
-            labels = data[1].cuda()
+            labels = data[1]
+            labels_transposed = [[labels[j][i] for j in range(len(labels))] for i in range(len(labels[0]))]
+            labels_array = np.array([np.array(label) for label in labels_transposed], dtype=np.float64)
+            labels = torch.from_numpy(labels_array).cuda()
 
         iters += 1
 
@@ -69,7 +72,7 @@ def train_epoch(models, method, criterion, optimizers, dataloaders, epoch, epoch
         if method == 'lloss':
             optimizers['module'].zero_grad()
 
-        scores, _, features = models['backbone'](inputs) 
+        scores, _, features = models['backbone'](inputs)
         target_loss = criterion(scores, labels)
 
         if method == 'lloss':
@@ -85,7 +88,7 @@ def train_epoch(models, method, criterion, optimizers, dataloaders, epoch, epoch
             m_backbone_loss = torch.sum(target_loss) / target_loss.size(0)        
             loss            = m_backbone_loss + WEIGHT * m_module_loss 
         else:
-            m_backbone_loss = torch.sum(target_loss) / target_loss.size(0)        
+            m_backbone_loss = target_loss.mean()
             loss            = m_backbone_loss
 
         loss.backward()

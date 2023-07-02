@@ -7,11 +7,12 @@ from torchvision.transforms import RandAugment
 from matplotlib import pyplot as plt
 from torchvision.transforms import ToPILImage
 import torch
+import torch.nn as nn
+import torch.optim as optim
+import timm
 from timm.data.mixup import Mixup
 from timm.data.dataset import ImageDataset
 from timm.data.loader import create_loader
-import torchvision
-from timm.data.random_erasing import RandomErasing
 
 
 class MyDataset(Dataset):
@@ -62,7 +63,7 @@ def load_dataset(dataset):
         T.RandomApply([RandAugment(num_ops=2, magnitude=9)], p=0.5),
         T.ToTensor(),
         T.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010]),
-        T.RandomErasing(p=0.25)
+        #T.RandomErasing(p=0.25)
         # T.Normalize((0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761)) # CIFAR-100
     ])
 
@@ -75,6 +76,19 @@ def load_dataset(dataset):
     if dataset == 'cifar10':
         data_train = CIFAR10('../cifar10', train=True, download=True, transform=train_transform)
 
+        mixup_fn = Mixup(mixup_alpha=0.8, cutmix_alpha=1.0, num_classes=10)
+
+        data_tensor = torch.from_numpy(data_train.data)
+        images = torch.stack([image.permute(0, 1, 2).float() for image in data_tensor])
+        labels = torch.tensor(data_train.targets).long()
+
+        images, labels = mixup_fn(images, labels)
+        images_numpy = images.numpy()
+        labels_list = labels.tolist()
+        data_train.data = np.uint8(images_numpy)
+        data_train.targets = labels_list
+
+        '''
         # visualization
         original_train_transform = T.Compose([
             T.ToTensor()
@@ -120,50 +134,7 @@ def load_dataset(dataset):
             #axes[i, 2].set_title('Augmented: {}'.format(class_labels[label]))
 
         plt.tight_layout()
-        plt.show()
-
-        '''
-        # mixup & cutmix
-        def get_dataset_and_loader(mixup_args):
-            mixup_fn = Mixup(**mixup_args)
-            dataset = ImageDataset('../imagenette2-320')
-            loader = create_loader(dataset,
-                                   input_size=(3, 224, 224),
-                                   batch_size=4,
-                                   is_training=True,
-                                   use_prefetcher=False)
-            return mixup_fn, dataset, loader
-
-        def imshow(inp, title=None):
-            """Imshow for Tensor."""
-            inp = inp.numpy().transpose((1, 2, 0))
-            mean = np.array([0.485, 0.456, 0.406])
-            std = np.array([0.229, 0.224, 0.225])
-            inp = std * inp + mean
-            inp = np.clip(inp, 0, 1)
-            plt.imshow(inp)
-            if title is not None:
-                plt.title(title)
-            plt.pause(0.001)
-
-        mixup_args = {
-            'mixup_alpha': 0.8,
-            'cutmix_alpha': 1.0,
-            'cutmix_minmax': None,
-            'prob': 1.0,
-            'switch_prob': 0.5,
-            'mode': 'batch',
-            'label_smoothing': 0,
-            'num_classes': 10}
-
-        mixup_fn, dataset, loader = get_dataset_and_loader(mixup_args)
-        inputs, classes = next(iter(loader))
-        out = torchvision.utils.make_grid(inputs)
-        imshow(out, title=[x.item() for x in classes])
-
-        inputs, classes = mixup_fn(inputs, classes)
-        out = torchvision.utils.make_grid(inputs)
-        imshow(out, title=[x.item() for x in classes.argmax(1)])    '''
+        plt.show()'''
 
         data_unlabeled = MyDataset(dataset, True, test_transform)
         data_test = CIFAR10('../cifar10', train=False, download=True, transform=test_transform)

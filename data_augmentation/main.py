@@ -22,6 +22,7 @@ from models.query_models import LossNet
 from train_test import train, test
 from load_dataset import load_dataset
 from selection_methods import query_samples
+from timm.loss import LabelSmoothingCrossEntropy, SoftTargetCrossEntropy
 from config import *
 
 parser = argparse.ArgumentParser()
@@ -116,7 +117,7 @@ if __name__ == '__main__':
             torch.backends.cudnn.benchmark = True
 
             # Loss, criterion and scheduler (re)initialization
-            criterion = nn.CrossEntropyLoss(reduction='none')
+            criterion = SoftTargetCrossEntropy()
             optim_backbone = optim.SGD(models['backbone'].parameters(), lr=LR,
                                        momentum=MOMENTUM, weight_decay=WDECAY)
 
