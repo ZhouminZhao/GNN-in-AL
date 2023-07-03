@@ -77,7 +77,9 @@ def load_dataset(dataset):
     if dataset == 'cifar10':
         data_train = CIFAR10('../cifar10', train=True, download=True, transform=train_transform)
 
-        mixup_fn = Mixup(prob=0.8, switch_prob=1.0, num_classes=10)
+        mixup_fn = Mixup(mixup_alpha=0.8, cutmix_alpha=1.0, cutmix_minmax=None,
+                         prob=0.1, switch_prob=0.5, mode='batch',
+                         label_smoothing=0.1, num_classes=10)
 
         data_tensor = torch.from_numpy(data_train.data)
         images = torch.stack([image.permute(0, 1, 2).float() for image in data_tensor])
@@ -88,6 +90,7 @@ def load_dataset(dataset):
         labels_list = labels.tolist()
         data_train.data = np.uint8(images_numpy)
         data_train.targets = labels_list
+
 
         random_erasing = T.RandomErasing(p=0.25)
         torch_tensor = torch.from_numpy(data_train.data.transpose((0, 3, 1, 2)))
