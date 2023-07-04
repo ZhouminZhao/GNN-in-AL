@@ -64,7 +64,6 @@ def load_dataset(dataset):
         T.RandomApply([RandAugment(num_ops=2, magnitude=9)], p=0.5),
         T.ToTensor(),
         T.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010]),
-        #T.RandomErasing(p=0.25)
         # T.Normalize((0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761)) # CIFAR-100
     ])
 
@@ -78,73 +77,57 @@ def load_dataset(dataset):
         data_train = CIFAR10('../cifar10', train=True, download=True, transform=train_transform)
 
         mixup_fn = Mixup(mixup_alpha=0.8, cutmix_alpha=1.0, cutmix_minmax=None,
-                         prob=0.1, switch_prob=0.5, mode='batch',
-                         label_smoothing=0.1, num_classes=10)
+                         prob=1.0, switch_prob=0.5, num_classes=10)
 
         data_tensor = torch.from_numpy(data_train.data)
-        images = torch.stack([image.permute(0, 1, 2).float() for image in data_tensor])
+        images = torch.stack([image.float() for image in data_tensor])
         labels = torch.tensor(data_train.targets).long()
 
-        images, labels = mixup_fn(images, labels)
-        images_numpy = images.numpy()
-        labels_list = labels.tolist()
-        data_train.data = np.uint8(images_numpy)
-        data_train.targets = labels_list
+        mixup_images, mixup_labels = mixup_fn(images, labels)
+        data_train.targets = mixup_labels.tolist()
+        mixup_images = np.uint8(mixup_images.numpy())
 
-
-        random_erasing = T.RandomErasing(p=0.25)
-        torch_tensor = torch.from_numpy(data_train.data.transpose((0, 3, 1, 2)))
-        erased_tensor = random_erasing(torch_tensor)
-        erased_data_train = erased_tensor.numpy().transpose((0, 2, 3, 1))
-        data_train.data = erased_data_train
-
-        '''
-        # visualization
-        original_train_transform = T.Compose([
-            T.ToTensor()
+        transform = T.Compose([
+            T.ToTensor(),
+            T.RandomErasing(p=0.25)
         ])
-        original_data_train = CIFAR10('../cifar10', train=True, download=True, transform=original_train_transform)
+        erased_data = []
+        for i in range(mixup_images.shape[0]):
+            image = Image.fromarray(mixup_images[i])
+            erased_image = transform(image)
+            erased_data.append(erased_image)
+        erased_data = torch.stack(erased_data)
+        erased_data = erased_data.numpy().transpose((0, 2, 3, 1))
+        data_train.data = (erased_data * 255).astype(np.uint8)
 
-        to_pil = ToPILImage()
+        # visualization
+        original_data_train = CIFAR10('../cifar10', train=True, download=True)
+
         class_labels = [
             'airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck'
         ]
 
-        fig, axes = plt.subplots(10, 2, figsize=(8, 2.5 * 5))
+        fig, axes = plt.subplots(10, 3, figsize=(8, 2.5 * 5))
 
         for i in range(10):
             original_image, label = original_data_train[i]
-
-            mean = [0.4914, 0.4822, 0.4465]
-            std = [0.2023, 0.1994, 0.2010]
-            mean_tensor = torch.tensor(mean)
-            std_tensor = torch.tensor(std)
-            denormalize = T.Normalize((-mean_tensor / std_tensor).tolist(), (1.0 / std_tensor).tolist())
-
-            image = data_train.data[i]
-            #image = denormalize(image)
-
-            #augmented_image, _ = augmented_data_train[i]
-            #augmented_image = denormalize(augmented_image)
-
-            original_image = to_pil(original_image)
-            image = to_pil(image)
-            #augmented_image = to_pil(augmented_image)
+            mixup_image = mixup_images[i]
+            erased_image = data_train.data[i]
 
             axes[i, 0].imshow(original_image)
             axes[i, 0].axis('off')
             axes[i, 0].set_title('Original: {}'.format(class_labels[label]))
 
-            axes[i, 1].imshow(image)
+            axes[i, 1].imshow(mixup_image)
             axes[i, 1].axis('off')
-            axes[i, 1].set_title('Augmented: {}'.format(class_labels[label]))
+            axes[i, 1].set_title('Mixup: {}'.format(class_labels[label]))
 
-            #axes[i, 2].imshow(augmented_image)
-            #axes[i, 2].axis('off')
-            #axes[i, 2].set_title('Augmented: {}'.format(class_labels[label]))
+            axes[i, 2].imshow(erased_image)
+            axes[i, 2].axis('off')
+            axes[i, 2].set_title('Erased: {}'.format(class_labels[label]))
 
         plt.tight_layout()
-        plt.show()  '''
+        plt.show()
 
         data_unlabeled = MyDataset(dataset, True, test_transform)
         data_test = CIFAR10('../cifar10', train=False, download=True, transform=test_transform)
