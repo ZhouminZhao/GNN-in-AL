@@ -16,94 +16,106 @@
 """Layers in jraph/flax."""
 
 from typing import Any, Callable
-from flax import linen as nn
-import jax
-import jax.numpy as jnp
+import torch
+import torch.nn as nn
 
 
 # Parametric ReLU层
 class PReLU(nn.Module):
-  """A PReLU Layer."""
-  init_fn: Callable[[Any], Any] = nn.initializers.uniform()
+    """A PReLU Layer."""
+    init_fn: Callable[[Any], Any] = nn.init.uniform_
 
-  @nn.compact
-  def __call__(self, x):
-    leakage = self.param('leakage', self.init_fn, [1])
-    return jnp.maximum(0, x) + leakage * jnp.minimum(0, x)
+    def __call__(self, x):
+        leakage = self.param('leakage', self.init_fn, [1])
+        return torch.maximum(0, x) + leakage * torch.minimum(0, x)
 
 
 # 激活函数层
 class Activation(nn.Module):
-  """Activation function."""
-  activation: str
+    """Activation function."""
 
-  def setup(self):
-    if self.activation == 'ReLU':
-      self.act_fn = nn.relu
-    elif self.activation == 'SeLU':
-      self.act_fn = jax.nn.selu
-    elif self.activation == 'PReLU':
-      self.act_fn = PReLU()
-    else:
-      raise 'Activation not recognized'
+    def __init__(self, activation):
+        super(Activation, self).__init__()
+        self.activation = activation
 
-  def __call__(self, x):
-    return self.act_fn(x)
+        if activation == 'ReLU':
+            self.act_fn = nn.ReLU()
+        elif activation == 'SeLU':
+            self.act_fn = nn.SELU()
+        elif activation == 'PReLU':
+            self.act_fn = nn.PReLU()
+        else:
+            raise Exception('Activation not recognized')
+
+    def forward(self, x):
+        return self.act_fn(x)
 
 
 # 双线性层
 class Bilinear(nn.Module):
-  """A Bilinear Layer."""
-  init_fn: Callable[[Any], Any] = nn.initializers.normal()
+    """A Bilinear Layer."""
 
-  @nn.compact
-  def __call__(self, x_l, x_r):
-    kernel = self.param('kernel', self.init_fn, [x_l.shape[-1], x_r.shape[-1]])
-    return x_l @ kernel @ jnp.transpose(x_r)
+    def __init__(self, in_features_l, in_features_r):
+        super(Bilinear, self).__init__()
+        self.kernel = nn.Parameter(torch.Tensor(in_features_l, in_features_r))
+        nn.init.normal_(self.kernel)
+
+    def forward(self, x_l, x_r):
+        return torch.matmul(torch.matmul(x_l, self.kernel), x_r)
 
 
 # KMeans聚类层，接收输入的x，返回聚类结果、最小距离和聚类中心
 class EucCluster(nn.Module):
-  """Learnable KMeans Clustering."""
-  num_reps: int
-  init_fn: Callable[[Any], Any] = nn.initializers.normal()
+    """Learnable KMeans Clustering."""
 
-  @nn.compact
-  def __call__(self, x):
-    centers = self.param('centers', self.init_fn, [self.num_reps, x.shape[-1]])
-    dists = jnp.sqrt(pairwise_sqeuc_dists(x, centers))
-    return jnp.argmin(dists, axis=0), jnp.min(dists, axis=1), centers
+    def __init__(self, num_reps, init_fn=nn.init.normal_):
+        super(EucCluster, self).__init__()
+        self.num_reps = num_reps
+        self.init_fn = init_fn
+
+    def forward(self, x):
+        centers = nn.Parameter(self.init_fn(torch.empty(self.num_reps, x.shape[-1])))
+        dists = torch.cdist(x, centers, p=2, compute_mode="donot_use_mm_for_euclid_dist")
+        return find_unique_min_indices(dists), torch.min(dists, dim=1)[0], centers
+
+
+def find_unique_min_indices(dists):
+    n, m = dists.shape
+    unique_min_indices = torch.zeros(m, dtype=torch.long)
+    found_indices = set()
+
+    for i in range(m):
+        col = dists[:, i]
+        min_val = float('inf')
+        min_idx = -1
+        for j in range(n):
+            if j not in found_indices and col[j] < min_val:
+                min_val = col[j]
+                min_idx = j
+        if min_idx != -1:
+            unique_min_indices[i] = min_idx
+            found_indices.add(min_idx)
+
+    return unique_min_indices
 
 
 # DGI (Deep Graph Infomax)的读出函数，接收节点表示node_embs，应用sigmoid函数
-@jax.jit
 def dgi_readout(node_embs):
-  return jax.nn.sigmoid(jnp.mean(node_embs, axis=0))
+    return torch.sigmoid(torch.mean(node_embs, dim=0))
 
 
 # 减去均值的函数
 def subtract_mean(embs):
-  return embs - jnp.mean(embs, axis=0)
+    return embs - torch.mean(embs, dim=0)
 
 
 # 除以L2范数的函数
 def divide_by_l2_norm(embs):
-  norm = jnp.linalg.norm(embs, axis=1, keepdims=True)
-  return embs / norm
+    norm = torch.norm(embs, dim=1, keepdim=True)
+    return embs / norm
 
 
 # 归一化节点表示，先减去均值，再除以L2范数
-@jax.jit
 def normalize(node_embs):
-  return divide_by_l2_norm(subtract_mean(node_embs))
+    return divide_by_l2_norm(subtract_mean(node_embs))
 
-
-# 计算两组样本之间的成对平方欧几里得距离
-@jax.jit
-def pairwise_sqeuc_dists(x, y):
-  """Pairwise square Euclidean distances."""
-  n = x.shape[0]
-  m = y.shape[0]
-  x_exp = jnp.expand_dims(x, axis=1).repeat(m, axis=1).reshape(n * m, -1)
-  y_exp = jnp.expand_dims(y, axis=0).repeat(n, axis=0).reshape(n * m, -1)
-  return jnp.sum(jnp.power(x_exp - y_exp, 2), axis=1).reshape(n, m)

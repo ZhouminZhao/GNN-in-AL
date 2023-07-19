@@ -1,0 +1,254 @@
+Dataset: cifar10
+Method type:Random
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+Epoch: 10 Loss: 69384.92
+Epoch: 20 Loss: 68878.31
+Epoch: 30 Loss: 67237.1
+Epoch: 40 Loss: 62892.574
+Epoch: 50 Loss: 56935.6
+Epoch: 60 Loss: 51011.598
+Epoch: 70 Loss: 46060.797
+Epoch: 80 Loss: 42063.86
+Epoch: 90 Loss: 40854.44
+Epoch: 100 Loss: 37054.766
+Epoch: 110 Loss: 36610.984
+Epoch: 120 Loss: 34241.938
+Epoch: 130 Loss: 32631.994
+Epoch: 140 Loss: 31381.355
+Epoch: 150 Loss: 33374.13
+Epoch: 160 Loss: 29958.717
+Epoch: 170 Loss: 28670.275
+Epoch: 180 Loss: 27971.695
+Epoch: 190 Loss: 26891.658
+Epoch: 200 Loss: 26559.42
+Epoch: 210 Loss: 25561.787
+Epoch: 220 Loss: 27342.84
+Epoch: 230 Loss: 23939.092
+Epoch: 240 Loss: 25199.094
+Epoch: 250 Loss: 24500.65
+Epoch: 260 Loss: 24262.352
+Epoch: 270 Loss: 22462.904
+Epoch: 280 Loss: 21317.945
+Epoch: 290 Loss: 23773.285
+Epoch: 300 Loss: 20398.883
+Epoch: 310 Loss: 18494.379
+Epoch: 320 Loss: 22640.566
+Epoch: 330 Loss: 18266.158
+Epoch: 340 Loss: 17348.45
+Epoch: 350 Loss: 16808.934
+Epoch: 360 Loss: 17625.99
+Epoch: 370 Loss: 17677.412
+Epoch: 380 Loss: 16307.187
+Epoch: 390 Loss: 15146.439
+Epoch: 400 Loss: 14556.447
+Epoch: 410 Loss: 13942.732
+Epoch: 420 Loss: 13549.141
+Epoch: 430 Loss: 16729.602
+Epoch: 440 Loss: 22180.32
+Epoch: 450 Loss: 13453.596
+Epoch: 460 Loss: 31794.488
+Epoch: 470 Loss: 13517.889
+Epoch: 480 Loss: 14486.799
+Epoch: 490 Loss: 15438.932
+Epoch: 500 Loss: 13481.289
+Epoch: 510 Loss: 12167.514
+Epoch: 520 Loss: 11815.997
+Epoch: 530 Loss: 11382.218
+Epoch: 540 Loss: 11238.184
+Epoch: 550 Loss: 10868.59
+Epoch: 560 Loss: 10528.475
+Epoch: 570 Loss: 10225.987
+Epoch: 580 Loss: 10162.699
+Epoch: 590 Loss: 9948.795
+Epoch: 600 Loss: 9621.084
+Epoch: 610 Loss: 9435.139
+Epoch: 620 Loss: 9241.709
+Epoch: 630 Loss: 8925.748
+Epoch: 640 Loss: 8655.335
+Epoch: 650 Loss: 8692.662
+Epoch: 660 Loss: 8413.643
+Epoch: 670 Loss: 8184.791
+Epoch: 680 Loss: 8059.9033
+Epoch: 690 Loss: 7823.6045
+Epoch: 700 Loss: 7728.393
+Epoch: 710 Loss: 7588.8887
+Epoch: 720 Loss: 7272.8027
+Epoch: 730 Loss: 7256.117
+Epoch: 740 Loss: 7053.673
+Epoch: 750 Loss: 6853.7827
+Epoch: 760 Loss: 6781.1465
+Epoch: 770 Loss: 6673.5273
+Epoch: 780 Loss: 6507.6245
+Epoch: 790 Loss: 6331.48
+Epoch: 800 Loss: 6248.8022
+Epoch: 810 Loss: 6067.915
+Epoch: 820 Loss: 5939.7544
+Epoch: 830 Loss: 5762.13
+Epoch: 840 Loss: 5753.9766
+Epoch: 850 Loss: 5650.2153
+Epoch: 860 Loss: 5498.2383
+Epoch: 870 Loss: 5371.3174
+Epoch: 880 Loss: 5303.4644
+Epoch: 890 Loss: 5127.8
+Epoch: 900 Loss: 5053.1772
+Epoch: 910 Loss: 4896.5474
+Epoch: 920 Loss: 4867.2563
+Epoch: 930 Loss: 4883.2744
+Epoch: 940 Loss: 4786.2007
+Epoch: 950 Loss: 4593.7437
+Epoch: 960 Loss: 4480.3755
+Epoch: 970 Loss: 4339.9473
+Epoch: 980 Loss: 4372.1367
+Epoch: 990 Loss: 4183.389
+Epoch: 1000 Loss: 4138.587
+Epoch: 1010 Loss: 4228.607
+Epoch: 1020 Loss: 4083.5537
+Epoch: 1030 Loss: 3874.2512
+Epoch: 1040 Loss: 3815.9065
+Epoch: 1050 Loss: 3779.994
+Epoch: 1060 Loss: 3741.781
+Epoch: 1070 Loss: 3628.4917
+Epoch: 1080 Loss: 3519.5742
+Epoch: 1090 Loss: 3480.9512
+Epoch: 1100 Loss: 3379.167
+Epoch: 1110 Loss: 3348.0913
+Epoch: 1120 Loss: 1383642.5
+Epoch: 1130 Loss: 6740.5674
+Epoch: 1140 Loss: 34398.008
+Epoch: 1150 Loss: 62405.555
+Epoch: 1160 Loss: 25749.986
+Epoch: 1170 Loss: 11120.911
+Epoch: 1180 Loss: 6469.1406
+Epoch: 1190 Loss: 6514.556
+Epoch: 1200 Loss: 6230.47
+Epoch: 1210 Loss: 5969.47
+Epoch: 1220 Loss: 5794.197
+Epoch: 1230 Loss: 5665.4204
+Epoch: 1240 Loss: 5614.6064
+Epoch: 1250 Loss: 5340.3247
+Epoch: 1260 Loss: 5430.14
+Epoch: 1270 Loss: 5379.2515
+Epoch: 1280 Loss: 5269.4663
+Epoch: 1290 Loss: 5122.516
+Epoch: 1300 Loss: 5149.087
+Epoch: 1310 Loss: 5125.994
+Epoch: 1320 Loss: 5062.998
+Epoch: 1330 Loss: 4940.9546
+Epoch: 1340 Loss: 5013.3784
+Epoch: 1350 Loss: 4859.9014
+Epoch: 1360 Loss: 4890.878
+Epoch: 1370 Loss: 4789.4194
+Epoch: 1380 Loss: 4826.2666
+Epoch: 1390 Loss: 4702.5513
+Epoch: 1400 Loss: 4684.1367
+Epoch: 1410 Loss: 4645.898
+Epoch: 1420 Loss: 4559.4204
+Epoch: 1430 Loss: 4526.4556
+Epoch: 1440 Loss: 4515.9683
+Epoch: 1450 Loss: 4500.395
+Epoch: 1460 Loss: 4449.35
+Epoch: 1470 Loss: 4434.276
+Epoch: 1480 Loss: 4367.5483
+Epoch: 1490 Loss: 4308.162
+Epoch: 1500 Loss: 4270.2983
+Epoch: 1510 Loss: 4245.2183
+Epoch: 1520 Loss: 4220.267
+Epoch: 1530 Loss: 4187.023
+Epoch: 1540 Loss: 4131.611
+Epoch: 1550 Loss: 4084.6584
+Epoch: 1560 Loss: 4022.3596
+Epoch: 1570 Loss: 4015.0718
+Epoch: 1580 Loss: 4029.9827
+Epoch: 1590 Loss: 3918.4084
+Epoch: 1600 Loss: 3935.215
+Epoch: 1610 Loss: 3920.3381
+Epoch: 1620 Loss: 3913.777
+Epoch: 1630 Loss: 3802.5999
+Epoch: 1640 Loss: 3828.673
+Epoch: 1650 Loss: 3749.045
+Epoch: 1660 Loss: 3789.2505
+Epoch: 1670 Loss: 3695.0808
+Epoch: 1680 Loss: 3645.3193
+Epoch: 1690 Loss: 3652.7332
+Epoch: 1700 Loss: 3601.5227
+Epoch: 1710 Loss: 3630.5347
+Epoch: 1720 Loss: 3564.0833
+Epoch: 1730 Loss: 3440.866
+Epoch: 1740 Loss: 3532.0925
+Epoch: 1750 Loss: 3494.879
+Epoch: 1760 Loss: 3408.329
+Epoch: 1770 Loss: 3406.5264
+Epoch: 1780 Loss: 3352.8098
+Epoch: 1790 Loss: 3355.799
+Epoch: 1800 Loss: 3328.466
+Epoch: 1810 Loss: 3261.6882
+Epoch: 1820 Loss: 3293.4617
+Epoch: 1830 Loss: 3240.2349
+Epoch: 1840 Loss: 3181.6604
+Epoch: 1850 Loss: 3162.3398
+Epoch: 1860 Loss: 3219.4067
+Epoch: 1870 Loss: 3169.5002
+Epoch: 1880 Loss: 3145.6868
+Epoch: 1890 Loss: 3091.023
+Epoch: 1900 Loss: 3028.0605
+Epoch: 1910 Loss: 3052.2715
+Epoch: 1920 Loss: 3015.234
+Epoch: 1930 Loss: 2976.85
+Epoch: 1940 Loss: 2940.4058
+Epoch: 1950 Loss: 2945.4583
+Epoch: 1960 Loss: 2853.5552
+Epoch: 1970 Loss: 2900.8542
+Epoch: 1980 Loss: 2892.2817
+Epoch: 1990 Loss: 2798.7273
+Epoch: 2000 Loss: 2832.3066
+>> Train a Model.
+>> Finished.
+Trial 1/5 || Cycle 1/10 || Label set size 1000: Test acc 41.14
+2000 64 49958
+48156 0 49998
+>> Train a Model.
+>> Finished.
+Trial 1/5 || Cycle 2/10 || Label set size 2000: Test acc 59.91
+3000 24 49979
+47156 0 49998
+>> Train a Model.
+>> Finished.
+Trial 1/5 || Cycle 3/10 || Label set size 3000: Test acc 68.87
+4000 20 49979
+46156 0 49998
+>> Train a Model.
+>> Finished.
+Trial 1/5 || Cycle 4/10 || Label set size 4000: Test acc 75.34
+5000 20 49997
+45156 0 49998
+>> Train a Model.
+>> Finished.
+Trial 1/5 || Cycle 5/10 || Label set size 5000: Test acc 77.42
+6000 20 49997
+44156 0 49998
+>> Train a Model.
+>> Finished.
+Trial 1/5 || Cycle 6/10 || Label set size 6000: Test acc 80.57
+7000 20 49997
+43156 0 49997
+>> Train a Model.
+>> Finished.
+Trial 1/5 || Cycle 7/10 || Label set size 7000: Test acc 83.78
+8000 20 49997
+42156 1 49997
+>> Train a Model.
+>> Finished.
+Trial 1/5 || Cycle 8/10 || Label set size 8000: Test acc 83.59
+9000 17 49997
+41156 1 49997
+>> Train a Model.
+>> Finished.
+Trial 1/5 || Cycle 9/10 || Label set size 9000: Test acc 83.91
+10000 17 49997
+40156 1 49997
+>> Train a Model.

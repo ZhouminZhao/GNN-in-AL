@@ -103,7 +103,7 @@ if __name__ == '__main__':
         else:
             labeled_set = representation_selection()
 
-            '''
+
             def check_duplicates(labeled_set):
                 seen_numbers = set()
                 duplicates = []
@@ -117,7 +117,7 @@ if __name__ == '__main__':
             duplicate_numbers = check_duplicates(labeled_set)
             if duplicate_numbers:
                 print("there are duplicates:", duplicate_numbers)
-            '''
+
 
             unlabeled_set = [x for x in indices if x not in labeled_set]
 

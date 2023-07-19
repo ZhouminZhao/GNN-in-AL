@@ -30,8 +30,6 @@ def LossPredLoss(input, target, margin=1.0, reduction='mean'):
 def test(models, epoch, method, dataloaders, mode='val'):
     assert mode == 'val' or mode == 'test'
     models['backbone'].eval()
-    if method == 'lloss':
-        models['module'].eval()
     
     total = 0
     correct = 0
@@ -52,11 +50,9 @@ def test(models, epoch, method, dataloaders, mode='val'):
 iters = 0
 def train_epoch(models, method, criterion, optimizers, dataloaders, epoch, epoch_loss):
 
-
     models['backbone'].train()
-    if method == 'lloss':
-        models['module'].train()
     global iters
+    loss = 0.0
     for data in tqdm(dataloaders['train'], leave=False, total=len(dataloaders['train'])):
         with torch.cuda.device(CUDA_VISIBLE_DEVICES):
             inputs = data[0].cuda()
@@ -65,32 +61,12 @@ def train_epoch(models, method, criterion, optimizers, dataloaders, epoch, epoch
         iters += 1
 
         optimizers['backbone'].zero_grad()
-        if method == 'lloss':
-            optimizers['module'].zero_grad()
-
         scores, _, features = models['backbone'](inputs)
         target_loss = criterion(scores, labels)
-
-        if method == 'lloss':
-            if epoch > epoch_loss:
-                features[0] = features[0].detach()
-                features[1] = features[1].detach()
-                features[2] = features[2].detach()
-                features[3] = features[3].detach()
-
-            pred_loss = models['module'](features)
-            pred_loss = pred_loss.view(pred_loss.size(0))
-            m_module_loss   = LossPredLoss(pred_loss, target_loss, margin=MARGIN)
-            m_backbone_loss = torch.sum(target_loss) / target_loss.size(0)        
-            loss            = m_backbone_loss + WEIGHT * m_module_loss 
-        else:
-            m_backbone_loss = target_loss.mean()
-            loss            = m_backbone_loss
-
+        m_backbone_loss = target_loss.mean()
+        loss = m_backbone_loss
         loss.backward()
         optimizers['backbone'].step()
-        if method == 'lloss':
-            optimizers['module'].step()
     return loss
 
 def train(models, method, criterion, optimizers, schedulers, dataloaders, num_epochs, epoch_loss):
@@ -103,8 +79,6 @@ def train(models, method, criterion, optimizers, schedulers, dataloaders, num_ep
         loss = train_epoch(models, method, criterion, optimizers, dataloaders, epoch, epoch_loss)
 
         schedulers['backbone'].step()
-        if method == 'lloss':
-            schedulers['module'].step()
 
         if False and epoch % 20  == 7:
             acc = test(models, epoch, method, dataloaders, mode='test')

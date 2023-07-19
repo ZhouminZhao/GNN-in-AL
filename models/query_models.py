@@ -86,14 +86,11 @@ class GCN(nn.Module):
         self.gc2 = GraphConvolution(nhid, nhid)
         self.gc3 = GraphConvolution(nhid, nclass)
         self.dropout = dropout
-        self.linear = nn.Linear(nclass, 1)
 
     def forward(self, x, adj):
         x = F.relu(self.gc1(x, adj))
         feat = F.dropout(x, self.dropout, training=self.training)
-        x = self.gc3(feat, adj)        
-        #x = self.linear(x)
-        # x = F.softmax(x, dim=1)
+        x = self.gc3(feat, adj)
         return torch.sigmoid(x), feat, torch.cat((feat,x),1)
 
 class View(nn.Module):
