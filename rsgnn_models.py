@@ -66,17 +66,15 @@ class GraphConvolution(Module):
 
 # GCN类，接收图数据对象graph的nodes，返回最终的节点表示
 class GCN(nn.Module):
-    def __init__(self, nfeat, nhid, drop_rate, activation):
+    def __init__(self, nfeat, drop_rate, activation):
         super(GCN, self).__init__()
         self.drop_rate = drop_rate
-        self.gc1 = GraphConvolution(nfeat, nhid)
-        self.gc2 = GraphConvolution(nhid, nfeat)
+        self.gc = GraphConvolution(nfeat, nfeat)
         self.activation_fn = layers.Activation(activation)
         self.dropout = drop_rate
 
     def forward(self, x, adj, train=True):
-        x = self.activation_fn(self.gc1(x, adj))
-        x = self.activation_fn(self.gc2(x, adj))
+        x = self.activation_fn(self.gc(x, adj))
         if train:
             x = F.dropout(x, self.dropout, training=True)
         else:
@@ -87,10 +85,9 @@ class GCN(nn.Module):
 # DGI类，接收两个图数据对象graph和c_graph，通过bilinear产生表示的摘要和预测的logits
 class DGI(nn.Module):
 
-    def __init__(self, nfeat, hid_dim):
+    def __init__(self, nfeat):
         super(DGI, self).__init__()
-        self.hid_dim = hid_dim
-        self.gcn = GCN(nfeat, hid_dim, 0.5, 'SeLU')
+        self.gcn = GCN(nfeat, 0.5, 'SeLU')
 
     def forward(self, graph, c_graph):
         nodes1 = self.gcn(graph['nodes'], graph['adj'])
@@ -110,7 +107,7 @@ class RSGNN(nn.Module):
         super(RSGNN, self).__init__()
         self.hid_dim = hid_dim
         self.num_reps = num_reps
-        self.dgi = DGI(nfeat, hid_dim)
+        self.dgi = DGI(nfeat)
         self.cluster = Cluster(num_reps)
 
     def forward(self, graph, c_graph):
