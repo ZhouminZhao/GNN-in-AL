@@ -1,0 +1,85 @@
+Dataset: cifar10
+Method type:Random
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+Epoch: 1 Loss: 10292140.0
+Epoch: 2 Loss: 34547744.0
+Epoch: 3 Loss: 52532080.0
+Epoch: 4 Loss: 158373824.0
+Epoch: 5 Loss: 91535120.0
+Epoch: 6 Loss: 68890320.0
+Epoch: 7 Loss: 97363104.0
+Epoch: 8 Loss: 126185808.0
+Epoch: 9 Loss: 188226224.0
+Epoch: 10 Loss: 89567960.0
+Epoch: 10 Loss: 89567960.0
+Epoch: 11 Loss: 291486016.0
+Epoch: 12 Loss: 99610504.0
+Epoch: 13 Loss: 94478096.0
+Epoch: 14 Loss: 134992416.0
+Epoch: 15 Loss: 86400240.0
+Epoch: 16 Loss: 120344832.0
+Epoch: 17 Loss: 166267424.0
+Epoch: 18 Loss: 136070144.0
+Epoch: 19 Loss: 113329984.0
+Epoch: 20 Loss: 121793032.0
+Epoch: 20 Loss: 121793032.0
+Epoch: 21 Loss: 183654944.0
+Epoch: 22 Loss: 112578512.0
+Epoch: 23 Loss: 176526560.0
+Epoch: 24 Loss: 166491840.0
+Epoch: 25 Loss: 125989592.0
+Epoch: 26 Loss: 138034496.0
+Epoch: 27 Loss: 104949536.0
+Epoch: 28 Loss: 92338088.0
+Epoch: 29 Loss: 95878784.0
+Epoch: 30 Loss: 98416008.0
+Epoch: 30 Loss: 98416008.0
+>> Train a Model.
+>> Finished.
+Trial 1/5 || Cycle 1/1 || Label set size 1000: Test acc 45.41
+Finished.
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+Epoch: 1 Loss: 6846462.0
+Epoch: 2 Loss: 36272332.0
+Epoch: 3 Loss: 136470928.0
+Epoch: 4 Loss: 51358904.0
+Epoch: 5 Loss: 52221492.0
+Epoch: 6 Loss: 79496656.0
+Epoch: 7 Loss: 63549892.0
+Epoch: 8 Loss: 72907016.0
+Epoch: 9 Loss: 74268712.0
+Epoch: 10 Loss: 118921952.0
+Epoch: 10 Loss: 118921952.0
+Epoch: 11 Loss: 89124240.0
+Epoch: 12 Loss: 157502656.0
+Epoch: 13 Loss: 86156576.0
+Epoch: 14 Loss: 100561416.0
+Epoch: 15 Loss: 98554416.0
+Epoch: 16 Loss: 142839776.0
+Epoch: 17 Loss: 78301720.0
+Epoch: 18 Loss: 75409104.0
+Epoch: 19 Loss: 156496368.0
+Epoch: 20 Loss: 77913040.0
+Epoch: 20 Loss: 77913040.0
+Epoch: 21 Loss: 74855520.0
+Epoch: 22 Loss: 93790600.0
+Epoch: 23 Loss: 89052864.0
+Epoch: 24 Loss: 71744632.0
+Epoch: 25 Loss: 85780288.0
+Epoch: 26 Loss: 89978904.0
+Epoch: 27 Loss: 92812288.0
+Epoch: 28 Loss: 70567504.0
+Epoch: 29 Loss: 71468160.0
+Epoch: 30 Loss: 67986712.0
+Epoch: 30 Loss: 67986712.0
+>> Train a Model.
