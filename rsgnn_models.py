@@ -69,11 +69,14 @@ class GCN(nn.Module):
     def __init__(self, nfeat, drop_rate, activation):
         super(GCN, self).__init__()
         self.drop_rate = drop_rate
-        self.gc = GraphConvolution(nfeat, nfeat)
+        self.gc = GraphConvolution(128, 128)
         self.activation_fn = layers.Activation(activation)
         self.dropout = drop_rate
+        self.nfeat = nfeat
 
     def forward(self, x, adj, train=True):
+        fc_layer = nn.Linear(self.nfeat, 128)
+        x = fc_layer(x)
         x = self.activation_fn(self.gc(x, adj))
         if train:
             x = F.dropout(x, self.dropout, training=True)
@@ -105,7 +108,6 @@ class RSGNN(nn.Module):
 
     def __init__(self, nfeat, hid_dim, num_reps):
         super(RSGNN, self).__init__()
-        self.hid_dim = hid_dim
         self.num_reps = num_reps
         self.dgi = DGI(nfeat)
         self.cluster = Cluster(num_reps)

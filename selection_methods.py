@@ -12,8 +12,8 @@ from kcenterGreedy import kCenterGreedy
 
 
 def BCEAdjLoss(scores, lbl, nlbl, l_adj):
-    lnl = torch.log(scores[lbl])
-    lnu = torch.log(1 - scores[nlbl])
+    lnl = torch.log(scores[lbl])    # labeled samples的分数的对数
+    lnu = torch.log(1 - scores[nlbl])   # unlabeled samples的补分数的对数
     labeled_score = torch.mean(lnl)
     unlabeled_score = torch.mean(lnu)
     bce_adj_loss = -labeled_score - l_adj * unlabeled_score
@@ -238,8 +238,10 @@ def query_samples(model, method, data_unlabeled, subset, labeled_set, cycle, arg
                                       sampler=SubsetSequentialSampler(subset + labeled_set),
                                       # more convenient if we maintain the order of subset
                                       pin_memory=True)
+        # assign unlabeled nodes as 0, labeled as 1
         binary_labels = torch.cat((torch.zeros([SUBSET, 1]), (torch.ones([len(labeled_set), 1]))), 0)
 
+        # extract features using Resnet-18
         features = get_features(model, unlabeled_loader)
         features = nn.functional.normalize(features)
         adj = aff_to_adj(features)
@@ -254,14 +256,16 @@ def query_samples(model, method, data_unlabeled, subset, labeled_set, cycle, arg
         optim_backbone = optim.Adam(models['gcn_module'].parameters(), lr=LR_GCN, weight_decay=WDECAY)
         optimizers = {'gcn_module': optim_backbone}
 
+        # represent the indices of labeled and unlabeled samples
         lbl = np.arange(SUBSET, SUBSET + (cycle + 1) * ADDENDUM, 1)
         nlbl = np.arange(0, SUBSET, 1)
 
-        ############
+        # carry out training for 200 epochs
         for _ in range(200):
             optimizers['gcn_module'].zero_grad()
             outputs, _, _ = models['gcn_module'](features, adj)
             lamda = args.lambda_loss
+            # loss function
             loss = BCEAdjLoss(outputs, lbl, nlbl, lamda)
             loss.backward()
             optimizers['gcn_module'].step()
@@ -271,6 +275,7 @@ def query_samples(model, method, data_unlabeled, subset, labeled_set, cycle, arg
             with torch.cuda.device(CUDA_VISIBLE_DEVICES):
                 inputs = features.cuda()
                 labels = binary_labels.cuda()
+            # GCN model is used to perform inference on unlabeled data, obtain scores and features
             scores, _, feat = models['gcn_module'](inputs, adj)
 
             if method == "CoreGCN":
@@ -280,11 +285,11 @@ def query_samples(model, method, data_unlabeled, subset, labeled_set, cycle, arg
                 batch2 = sampling2.select_batch_(new_av_idx, ADDENDUM)
                 other_idx = [x for x in range(SUBSET) if x not in batch2]
                 arg = other_idx + batch2
-
             else:
-
                 s_margin = args.s_margin
+                # calculate median scores relative to a certain threshold
                 scores_median = np.squeeze(torch.abs(scores[:SUBSET] - s_margin).detach().cpu().numpy())
+                # sort the median scores, identify which unlabeled samples exhibit higher uncertainty
                 arg = np.argsort(-(scores_median))
 
             print("Max confidence value: ", torch.max(scores.data))

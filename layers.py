@@ -13,21 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Layers in jraph/flax."""
-
-from typing import Any, Callable
 import torch
 import torch.nn as nn
-
-
-# Parametric ReLU层
-class PReLU(nn.Module):
-    """A PReLU Layer."""
-    init_fn: Callable[[Any], Any] = nn.init.uniform_
-
-    def __call__(self, x):
-        leakage = self.param('leakage', self.init_fn, [1])
-        return torch.maximum(0, x) + leakage * torch.minimum(0, x)
 
 
 # 激活函数层
@@ -42,8 +29,6 @@ class Activation(nn.Module):
             self.act_fn = nn.ReLU()
         elif activation == 'SeLU':
             self.act_fn = nn.SELU()
-        elif activation == 'PReLU':
-            self.act_fn = nn.PReLU()
         else:
             raise Exception('Activation not recognized')
 
@@ -118,4 +103,3 @@ def divide_by_l2_norm(embs):
 # 归一化节点表示，先减去均值，再除以L2范数
 def normalize(node_embs):
     return divide_by_l2_norm(subtract_mean(node_embs))
-

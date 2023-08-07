@@ -49,5 +49,5 @@ def representation_selection():
     key = np.random.default_rng(args.seed)  # 设置随机种子
     graph, labels, num_classes = data_utils.create_jraph()  # 加载图、label和类别数
     rsgnn_flags = get_rsgnn_flags(num_classes)  # 获取rsgnn的超参配置
-    selected = trainer.train_rsgnn(rsgnn_flags, graph, key)  # 使用rsgnn并获取选定的节点
-    return selected.tolist()
+    node_features, selected = trainer.train_rsgnn(rsgnn_flags, graph, key)  # 使用rsgnn并获取learned embeddings和选定的节点
+    return node_features, selected.tolist()

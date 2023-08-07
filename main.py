@@ -25,6 +25,8 @@ from torch.utils.data import DataLoader, Dataset
 from torchvision.datasets import CIFAR100, CIFAR10, FashionMNIST, SVHN
 from sklearn.neighbors import kneighbors_graph
 from rsgnn import representation_selection
+import matplotlib.pyplot as plt
+import umap
 
 import common_args
 args = common_args.parser.parse_args()
@@ -101,23 +103,8 @@ if __name__ == '__main__':
         if args.total:
             labeled_set = indices
         else:
-            labeled_set = representation_selection()
-
-
-            def check_duplicates(labeled_set):
-                seen_numbers = set()
-                duplicates = []
-                for number in labeled_set:
-                    if number in seen_numbers:
-                        duplicates.append(number)
-                    else:
-                        seen_numbers.add(number)
-                return duplicates
-                
-            duplicate_numbers = check_duplicates(labeled_set)
-            if duplicate_numbers:
-                print("there are duplicates:", duplicate_numbers)
-
+            node_features, labeled_set = representation_selection()
+            #labeled_set = indices[:ADDENDUM]
 
             unlabeled_set = [x for x in indices if x not in labeled_set]
 
@@ -126,6 +113,24 @@ if __name__ == '__main__':
                                   pin_memory=True, drop_last=True)
         test_loader = DataLoader(data_test, batch_size=BATCH)
         dataloaders = {'train': train_loader, 'test': test_loader}
+
+        '''visualization'''
+        data_train_features = node_features.numpy()  # 将样本特征展平为一维数组
+        data_train_labels = np.array(data_train.targets)
+        # Initialize UMAP with target dimension (e.g., 2 for 2D visualization)
+        umap_model = umap.UMAP(n_components=2, random_state=42)
+        # Fit and transform the feature data to 2D using UMAP
+        data_train_umap = umap_model.fit_transform(data_train_features)
+        plt.figure(figsize=(8, 6))
+        plt.scatter(data_train_umap[:, 0], data_train_umap[:, 1], c=data_train_labels, cmap='tab10', marker='o', s=10)
+        plt.colorbar()
+
+        plt.scatter(data_train_umap[labeled_set, 0], data_train_umap[labeled_set, 1], c='k', marker='x', s=100,
+                    label='Labeled Set')
+        plt.title('UMAP Visualization of CIFAR-10 Training Images')
+        plt.legend()
+        plt.savefig('umap_visualization.png', dpi=300)
+        plt.show()
 
         for cycle in range(CYCLES):
 

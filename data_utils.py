@@ -63,7 +63,7 @@ def get_features(models, unlabeled_loader):
                 inputs = inputs.cuda()
                 _, features_batch, _ = models['backbone'](inputs)
             features = torch.cat((features, features_batch), 0)
-        feat = features  # .detach().cpu().numpy()
+        feat = features.detach().cpu().numpy()
     return feat
 
 def knn_similarity_graph(data, k):
@@ -99,7 +99,7 @@ def create_jraph():
     model = {'backbone': resnet18}
     torch.backends.cudnn.benchmark = True
 
-    features = get_features(model, data_train_loader).detach().cpu().numpy()
+    features = get_features(model, data_train_loader)
     adj = knn_similarity_graph(features, 15)
     labels = onehot(data_train.targets)
 
