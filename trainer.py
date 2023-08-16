@@ -58,7 +58,7 @@ class BestKeeper:
 
 # 训练rsgnn：flags包含模型的超参配置的命名空间对象，graph，随机数生成器的状态
 # 返回一个numpy数组，包含得到的representation的标识符IDs
-def train_rsgnn(flags, graph, rng):
+def train_rsgnn(flags, graph, rng, init):
     """Trainer function for RS-GNN."""
     features = graph['nodes']
     n_nodes = graph['n_node'][0]
@@ -66,7 +66,7 @@ def train_rsgnn(flags, graph, rng):
     #new_seed = rng.integers(0, np.iinfo(np.int32).max)
     #new_rng = np.random.default_rng(seed=new_seed)
     #rng = new_rng
-    model = rsgnn_models.RSGNN(nfeat=features.shape[1], hid_dim=flags.hid_dim, num_reps=flags.num_reps)
+    model = rsgnn_models.RSGNN(nfeat=features.shape[1], hid_dim=flags.hid_dim, num_reps=flags.num_reps, init=init)
     optimizer = optim.Adam(model.parameters(), lr=flags.lr, weight_decay=0.0)
 
     def corrupt_graph(corrupt_rng):
@@ -95,7 +95,7 @@ def train_rsgnn(flags, graph, rng):
 
         optimizer.zero_grad()
         loss = loss_fn()
-        loss.backward()
+        loss.backward(retain_graph=True)
         optimizer.step()
         return optimizer, loss.item()
 
@@ -113,4 +113,4 @@ def train_rsgnn(flags, graph, rng):
     model.load_state_dict(best_keeper.get())
     h, centers, rep_ids, _, _ = model(graph, c_graph)
 
-    return graph['nodes'], rep_ids.numpy()
+    return centers, rep_ids.numpy()

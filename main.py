@@ -75,12 +75,12 @@ def aff_to_adj(x, y=None):
 if __name__ == '__main__':
 
     method = args.method_type
-    methods = ['Random', 'UncertainGCN', 'CoreGCN', 'CoreSet', 'lloss', 'VAAL', 'Popular']
+    methods = ['Random', 'UncertainGCN', 'CoreGCN', 'CoreSet', 'lloss', 'VAAL', 'Popular', 'RSGNN']
     datasets = ['cifar10', 'cifar100', 'fashionmnist', 'svhn']
     assert method in methods, 'No method %s! Try options %s' % (method, methods)
     assert args.dataset in datasets, 'No dataset %s! Try options %s' % (args.dataset, datasets)
     '''
-    method_type: 'Random', 'UncertainGCN', 'CoreGCN', 'CoreSet', 'lloss','VAAL','Popular'
+    method_type: 'Random', 'UncertainGCN', 'CoreGCN', 'CoreSet', 'lloss','VAAL','Popular', 'RSGNN'
     '''
     results = open(
         'results_' + str(args.method_type) + "_" + args.dataset + '_main' + str(args.cycles) + str(args.total) + '.txt',
@@ -103,7 +103,8 @@ if __name__ == '__main__':
         if args.total:
             labeled_set = indices
         else:
-            node_features, labeled_set = representation_selection()
+            subset = []
+            centers, labeled_set = representation_selection(subset, select='first', init=None)
             #labeled_set = indices[:ADDENDUM]
 
             unlabeled_set = [x for x in indices if x not in labeled_set]
@@ -114,7 +115,7 @@ if __name__ == '__main__':
         test_loader = DataLoader(data_test, batch_size=BATCH)
         dataloaders = {'train': train_loader, 'test': test_loader}
 
-        '''visualization'''
+        '''visualization
         data_train_features = node_features.numpy()  # 将样本特征展平为一维数组
         data_train_labels = np.array(data_train.targets)
         # Initialize UMAP with target dimension (e.g., 2 for 2D visualization)
@@ -131,6 +132,7 @@ if __name__ == '__main__':
         plt.legend()
         plt.savefig('umap_visualization.png', dpi=300)
         plt.show()
+        '''
 
         for cycle in range(CYCLES):
 
@@ -176,7 +178,7 @@ if __name__ == '__main__':
                 break
 
             # Get the indices of the unlabeled samples to train on next cycle
-            arg = query_samples(models, method, data_unlabeled, subset, labeled_set, cycle, args)
+            centers, arg = query_samples(models, method, data_unlabeled, subset, labeled_set, cycle, args, centers)
 
             # Update the labeled dataset and the unlabeled dataset, respectively
             labeled_set += list(torch.tensor(subset)[arg][-ADDENDUM:].numpy())

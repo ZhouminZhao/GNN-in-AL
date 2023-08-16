@@ -6,4 +6,4 @@
 #SBATCH --partition=gpu_all
 #SBATCH --gres=gpu:2
 #SBATCH --mem=64GB
-python3 main.py --m Random --dataset cifar10 -c 10
+python3 main.py --m RSGNN --dataset cifar10 --c 10 --rsgnn_epochs 10

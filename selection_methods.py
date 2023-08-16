@@ -9,6 +9,7 @@ import torchvision.models as models
 from models.query_models import VAE, Discriminator, GCN
 from data.sampler import SubsetSequentialSampler
 from kcenterGreedy import kCenterGreedy
+from rsgnn import representation_selection
 
 
 def BCEAdjLoss(scores, lbl, nlbl, l_adj):
@@ -207,7 +208,7 @@ def get_kcg(models, labeled_data_size, unlabeled_loader):
 
 
 # Select the indices of the unlablled data according to the methods
-def query_samples(model, method, data_unlabeled, subset, labeled_set, cycle, args):
+def query_samples(model, method, data_unlabeled, subset, labeled_set, cycle, args, centers):
     if method == 'Random':
         arg = np.random.randint(SUBSET, size=SUBSET)
 
@@ -231,6 +232,11 @@ def query_samples(model, method, data_unlabeled, subset, labeled_set, cycle, arg
 
         degrees = torch.sum(adj[:len(unlabeled_features), :], dim=1)  # only consider the unlabeled data points
         arg = torch.argsort(degrees, descending=True).cpu()
+
+    if method == 'RSGNN':
+        centers, selected = representation_selection(subset, select='sequential', init=centers)
+        remaining_points = np.setdiff1d(np.arange(SUBSET), selected)
+        arg = np.concatenate((selected, remaining_points))
 
     if (method == 'UncertainGCN') or (method == 'CoreGCN'):
         # Create unlabeled dataloader for the unlabeled subset
@@ -311,4 +317,4 @@ def query_samples(model, method, data_unlabeled, subset, labeled_set, cycle, arg
 
         arg = get_kcg(model, ADDENDUM * (cycle + 1), unlabeled_loader)
 
-    return arg
+    return centers, arg

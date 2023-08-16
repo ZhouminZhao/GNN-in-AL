@@ -106,11 +106,11 @@ class DGI(nn.Module):
 class RSGNN(nn.Module):
     """The RSGNN model."""
 
-    def __init__(self, nfeat, hid_dim, num_reps):
+    def __init__(self, nfeat, hid_dim, num_reps, init):
         super(RSGNN, self).__init__()
         self.num_reps = num_reps
         self.dgi = DGI(nfeat)
-        self.cluster = Cluster(num_reps)
+        self.cluster = Cluster(num_reps, init)
 
     def forward(self, graph, c_graph):
         (h, _, _), logits = self.dgi(graph, c_graph)
@@ -122,12 +122,11 @@ class RSGNN(nn.Module):
 # Cluster类，接收节点表示embs，计算聚类中心、表示的标识符和聚类损失
 class Cluster(nn.Module):
     """Finds cluster centers given embeddings."""
-    num_reps: int
 
-    def __init__(self, num_reps):
+    def __init__(self, num_reps, init):
         super(Cluster, self).__init__()
         self.num_reps = num_reps
-        self.cluster = layers.EucCluster(num_reps)
+        self.cluster = layers.EucCluster(num_reps=num_reps, init_fn=nn.init.normal_, init=init)
 
     def forward(self, embs):
         rep_ids, cluster_dists, centers = self.cluster(embs)

@@ -14,6 +14,7 @@
 # limitations under the License.
 
 """Data utils for RS-GNN."""
+import random
 
 import numpy as np
 from load_dataset import load_dataset
@@ -31,17 +32,20 @@ def onehot(labels):
     unique_labels = np.unique(labels)
     return np.identity(len(unique_labels))[np.array(labels)]
 
+
 # 对称化邻接矩阵
 def symmetrize(edges):
     """Symmetrizes the adjacency."""
     inv_edges = {(d, s) for s, d in edges}
     return edges.union(inv_edges)
 
+
 # 在图中添加自环，返回边集合
 def add_self_loop(edges, n_node):
     """Adds self loop."""
     self_loop_edges = {(s, s) for s in range(n_node)}
     return edges.union(self_loop_edges)
+
 
 # 从邻接矩阵和特征矩阵获取边集合和边数
 def get_graph_edges(adj, features):
@@ -53,12 +57,26 @@ def get_graph_edges(adj, features):
     edges = add_self_loop(edges, features.shape[0])
     return edges, len(edges)
 
-def get_features(models, unlabeled_loader):
+
+def get_features_train(models, unlabeled_loader):
     models['backbone'].eval()
     with torch.cuda.device(CUDA_VISIBLE_DEVICES):
         features = torch.tensor([]).cuda()
     with torch.no_grad():
         for inputs, _ in unlabeled_loader:
+            with torch.cuda.device(CUDA_VISIBLE_DEVICES):
+                inputs = inputs.cuda()
+                _, features_batch, _ = models['backbone'](inputs)
+            features = torch.cat((features, features_batch), 0)
+        feat = features.detach().cpu().numpy()
+    return feat
+
+def get_features(models, unlabeled_loader):
+    models['backbone'].eval()
+    with torch.cuda.device(CUDA_VISIBLE_DEVICES):
+        features = torch.tensor([]).cuda()
+    with torch.no_grad():
+        for inputs, _, _ in unlabeled_loader:
             with torch.cuda.device(CUDA_VISIBLE_DEVICES):
                 inputs = inputs.cuda()
                 _, features_batch, _ = models['backbone'](inputs)
@@ -86,22 +104,35 @@ def knn_similarity_graph(data, k):
 
     return adj
 
+
 # 创建jraph，返回图表示、labels和类别数
-def create_jraph():
+def create_jraph(subset, select):
     """Creates a jraph graph for a dataset."""
-    data_train, _, _, _, NO_CLASSES, no_train = load_dataset('cifar10')
-    original_indices = list(range(no_train))
+    data_train, data_unlabeled, _, _, NO_CLASSES, no_train = load_dataset('cifar10')
+    original_indices = random.sample(range(no_train), 10000)
     data_train_loader = DataLoader(data_train, batch_size=BATCH,
                                    sampler=SubsetSequentialSampler(original_indices),
                                    pin_memory=True)
+    data_unlabeled_loader = DataLoader(data_unlabeled, batch_size=BATCH,
+                                       sampler=SubsetSequentialSampler(subset),
+                                       pin_memory=True)
+    if select == 'first':
+        data_loader = data_train_loader
+        labels = onehot(data_train.targets)
+    elif select == 'sequential':
+        data_loader = data_unlabeled_loader
+        labels = onehot(data_unlabeled.cifar10.targets)
+
     with torch.cuda.device(CUDA_VISIBLE_DEVICES):
         resnet18 = resnet.ResNet18(num_classes=NO_CLASSES).cuda()
     model = {'backbone': resnet18}
     torch.backends.cudnn.benchmark = True
 
-    features = get_features(model, data_train_loader)
+    if select == 'first':
+        features = get_features_train(model, data_loader)
+    elif select == 'sequential':
+        features = get_features(model, data_loader)
     adj = knn_similarity_graph(features, 15)
-    labels = onehot(data_train.targets)
 
     edges, n_edge = get_graph_edges(adj, np.array(features))
     n_node = len(features)

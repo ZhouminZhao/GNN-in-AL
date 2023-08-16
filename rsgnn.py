@@ -43,11 +43,11 @@ def get_rsgnn_flags(num_classes):
         lr=args.lr,
         lambda_=args.lambda_)
 
-def representation_selection():
+def representation_selection(subset, select, init):
     """Runs node selector, receives selected nodes, trains GCN."""
     np.random.seed(args.seed)
     key = np.random.default_rng(args.seed)  # 设置随机种子
-    graph, labels, num_classes = data_utils.create_jraph()  # 加载图、label和类别数
+    graph, labels, num_classes = data_utils.create_jraph(subset, select)  # 加载图、label和类别数
     rsgnn_flags = get_rsgnn_flags(num_classes)  # 获取rsgnn的超参配置
-    node_features, selected = trainer.train_rsgnn(rsgnn_flags, graph, key)  # 使用rsgnn并获取learned embeddings和选定的节点
-    return node_features, selected.tolist()
+    centers, selected = trainer.train_rsgnn(rsgnn_flags, graph, key, init)  # 使用rsgnn并获取learned embeddings和选定的节点
+    return centers, selected.tolist()
