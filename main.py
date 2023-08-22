@@ -27,6 +27,9 @@ from sklearn.neighbors import kneighbors_graph
 from rsgnn import representation_selection
 import matplotlib.pyplot as plt
 import umap
+from models.query_models import VAE, Discriminator, GCN
+from kcenterGreedy import kCenterGreedy
+from rsgnn_models import GraphConvolution, GCN
 
 import common_args
 args = common_args.parser.parse_args()
@@ -61,6 +64,19 @@ def get_features(models, train_loader):
         feat = features  # .detach().cpu().numpy()
     return feat
 
+def get_features_centers(models, train_loader):
+    models['backbone'].eval()
+    with torch.cuda.device(CUDA_VISIBLE_DEVICES):
+        features = torch.tensor([]).cuda()
+    with torch.no_grad():
+        for inputs, _, _ in train_loader:
+            with torch.cuda.device(CUDA_VISIBLE_DEVICES):
+                inputs = inputs.cuda()
+                _, features_batch, _ = models['backbone'](inputs)
+            features = torch.cat((features, features_batch), 0)
+        feat = features  # .detach().cpu().numpy()
+    return feat
+
 
 def aff_to_adj(x, y=None):
     adj = np.matmul(x, x.transpose())
@@ -69,6 +85,24 @@ def aff_to_adj(x, y=None):
     adj_diag[adj_diag == 0] = 1  # 处理度为0的情况，避免除以零
     adj = np.matmul(adj, np.diag(1 / adj_diag))
     return adj
+
+def get_kcg(models, labeled_data_size, unlabeled_loader):
+    models['backbone'].eval()
+    with torch.cuda.device(CUDA_VISIBLE_DEVICES):
+        features = torch.tensor([]).cuda()
+
+    with torch.no_grad():
+        for inputs, _, _ in unlabeled_loader:
+            with torch.cuda.device(CUDA_VISIBLE_DEVICES):
+                inputs = inputs.cuda()
+            _, features_batch, _ = models['backbone'](inputs)
+            features = torch.cat((features, features_batch), 0)
+        feat = features.detach().cpu().numpy()
+        new_av_idx = np.arange(SUBSET, (SUBSET + labeled_data_size))
+        sampling = kCenterGreedy(feat)
+        batch = sampling.select_batch_(new_av_idx, ADDENDUM)
+        other_idx = [x for x in range(SUBSET) if x not in batch]
+    return other_idx + batch
 
 ##
 # Main
@@ -100,11 +134,30 @@ if __name__ == '__main__':
         indices = list(range(NUM_TRAIN))
         random.shuffle(indices)
 
+        with torch.cuda.device(CUDA_VISIBLE_DEVICES):
+            resnet18 = resnet.ResNet18(num_classes=NO_CLASSES).cuda()
+        models = {'backbone': resnet18}
+        torch.backends.cudnn.benchmark = True
+        _, centers_data_unlabeled, _, _, _, _ = load_dataset('cifar10')
+        unlabeled_loader = DataLoader(centers_data_unlabeled, batch_size=BATCH,
+                                      sampler=SubsetSequentialSampler(indices),
+                                      pin_memory=True)
+        centers_initialized_indices = get_kcg(models, ADDENDUM, unlabeled_loader)[:ADDENDUM]
+
+        centers_features = get_features_centers(models, unlabeled_loader)
+        centers_initialized = centers_features[centers_initialized_indices].cpu()
+
+        adj_centers = aff_to_adj(centers_initialized.to('cpu').numpy())
+        adj_centers = torch.tensor(adj_centers)
+        # GCN class，input nodes，output embeddings
+        gcn = GCN(512, 0.5, 'ReLU')
+        centers_initialized = gcn(centers_initialized, adj_centers)
+
         if args.total:
             labeled_set = indices
         else:
             subset = []
-            centers, labeled_set = representation_selection(subset, select='first', init=None)
+            centers, labeled_set = representation_selection(subset, select='first', init=None, centers_initialized=centers_initialized)
             #labeled_set = indices[:ADDENDUM]
 
             unlabeled_set = [x for x in indices if x not in labeled_set]

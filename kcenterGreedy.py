@@ -67,7 +67,7 @@ class SamplingMethod(object):
 
 class kCenterGreedy(SamplingMethod):
 
-    def __init__(self, X, metric='euclidean'):
+    def __init__(self, X: object, metric: object = 'euclidean') -> object:
         self.X = X
         # self.y = y
         self.flat_X = self.flatten_X()
