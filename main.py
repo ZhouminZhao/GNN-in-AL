@@ -88,6 +88,7 @@ def aff_to_adj(x, y=None):
 
 def get_kcg(models, labeled_data_size, unlabeled_loader):
     models['backbone'].eval()
+
     with torch.cuda.device(CUDA_VISIBLE_DEVICES):
         features = torch.tensor([]).cuda()
 
@@ -98,10 +99,18 @@ def get_kcg(models, labeled_data_size, unlabeled_loader):
             _, features_batch, _ = models['backbone'](inputs)
             features = torch.cat((features, features_batch), 0)
         feat = features.detach().cpu().numpy()
+
+        # Create a new index range for selecting labeled data
         new_av_idx = np.arange(SUBSET, (SUBSET + labeled_data_size))
+
+        # Use the kCenterGreedy algorithm to select a batch of data
         sampling = kCenterGreedy(feat)
         batch = sampling.select_batch_(new_av_idx, ADDENDUM)
+
+        # Calculate the indices of other data points that were not selected
         other_idx = [x for x in range(SUBSET) if x not in batch]
+
+    # Return a combination of other indices and the selected batch indices
     return other_idx + batch
 
 ##
@@ -134,30 +143,11 @@ if __name__ == '__main__':
         indices = list(range(NUM_TRAIN))
         random.shuffle(indices)
 
-        with torch.cuda.device(CUDA_VISIBLE_DEVICES):
-            resnet18 = resnet.ResNet18(num_classes=NO_CLASSES).cuda()
-        models = {'backbone': resnet18}
-        torch.backends.cudnn.benchmark = True
-        _, centers_data_unlabeled, _, _, _, _ = load_dataset('cifar10')
-        unlabeled_loader = DataLoader(centers_data_unlabeled, batch_size=BATCH,
-                                      sampler=SubsetSequentialSampler(indices),
-                                      pin_memory=True)
-        centers_initialized_indices = get_kcg(models, ADDENDUM, unlabeled_loader)[:ADDENDUM]
-
-        centers_features = get_features_centers(models, unlabeled_loader)
-        centers_initialized = centers_features[centers_initialized_indices].cpu()
-
-        adj_centers = aff_to_adj(centers_initialized.to('cpu').numpy())
-        adj_centers = torch.tensor(adj_centers)
-        # GCN class，input nodes，output embeddings
-        gcn = GCN(512, 0.5, 'ReLU')
-        centers_initialized = gcn(centers_initialized, adj_centers)
-
         if args.total:
             labeled_set = indices
         else:
             subset = []
-            centers, labeled_set = representation_selection(subset, select='first', init=None, centers_initialized=centers_initialized)
+            centers, labeled_set = representation_selection(subset, select='first', init=None)
             #labeled_set = indices[:ADDENDUM]
 
             unlabeled_set = [x for x in indices if x not in labeled_set]

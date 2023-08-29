@@ -234,7 +234,7 @@ def query_samples(model, method, data_unlabeled, subset, labeled_set, cycle, arg
         arg = torch.argsort(degrees, descending=True).cpu()
 
     if method == 'RSGNN':
-        centers, selected = representation_selection(subset, select='sequential', init=centers, centers_initialized=centers)
+        centers, selected = representation_selection(subset, select='sequential', init=centers)
         remaining_points = np.setdiff1d(np.arange(SUBSET), selected)
         arg = np.concatenate((selected, remaining_points))
 
