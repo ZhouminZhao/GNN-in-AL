@@ -13,8 +13,8 @@ from rsgnn import representation_selection
 
 
 def BCEAdjLoss(scores, lbl, nlbl, l_adj):
-    lnl = torch.log(scores[lbl])    # labeled samples的分数的对数
-    lnu = torch.log(1 - scores[nlbl])   # unlabeled samples的补分数的对数
+    lnl = torch.log(scores[lbl])  # labeled samples的分数的对数
+    lnu = torch.log(1 - scores[nlbl])  # unlabeled samples的补分数的对数
     labeled_score = torch.mean(lnl)
     unlabeled_score = torch.mean(lnu)
     bce_adj_loss = -labeled_score - l_adj * unlabeled_score
@@ -234,7 +234,38 @@ def query_samples(model, method, data_unlabeled, subset, labeled_set, cycle, arg
         arg = torch.argsort(degrees, descending=True).cpu()
 
     if method == 'RSGNN':
-        centers, selected = representation_selection(subset, select='sequential', init=centers)
+        unlabeled_loader = DataLoader(data_unlabeled, batch_size=BATCH,
+                                      sampler=SubsetSequentialSampler(subset + labeled_set),
+                                      # more convenient if we maintain the order of subset
+                                      pin_memory=True)
+        features = get_features(model, unlabeled_loader)
+        features = nn.functional.normalize(features)
+        adj = aff_to_adj(features)
+        gcn_module = GCN(nfeat=features.shape[1],
+                         nhid=args.hidden_units,
+                         nclass=1,
+                         dropout=args.dropout_rate).cuda()
+        models = {'gcn_module': gcn_module}
+        optim_backbone = optim.Adam(models['gcn_module'].parameters(), lr=LR_GCN, weight_decay=WDECAY)
+        optimizers = {'gcn_module': optim_backbone}
+
+        # represent the indices of labeled and unlabeled samples
+        lbl = np.arange(SUBSET, SUBSET + (cycle + 1) * ADDENDUM, 1)
+        nlbl = np.arange(0, SUBSET, 1)
+
+        bce_loss = None
+        # carry out training for 200 epochs
+        for _ in range(200):
+            optimizers['gcn_module'].zero_grad()
+            outputs, _, _ = models['gcn_module'](features, adj)
+            lamda = args.lambda_loss
+            # loss function
+            loss = BCEAdjLoss(outputs, lbl, nlbl, lamda)
+            loss.backward()
+            optimizers['gcn_module'].step()
+            bce_loss = loss.item()
+
+        centers, selected = representation_selection(subset, select='sequential', init=centers, bce_loss=bce_loss)
         remaining_points = np.setdiff1d(np.arange(SUBSET), selected)
         arg = np.concatenate((selected, remaining_points))
 

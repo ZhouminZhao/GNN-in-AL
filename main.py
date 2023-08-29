@@ -147,7 +147,7 @@ if __name__ == '__main__':
             labeled_set = indices
         else:
             subset = []
-            centers, labeled_set = representation_selection(subset, select='first', init=None)
+            centers, labeled_set = representation_selection(subset, select='first', init=None, bce_loss=0)
             #labeled_set = indices[:ADDENDUM]
 
             unlabeled_set = [x for x in indices if x not in labeled_set]

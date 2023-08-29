@@ -58,7 +58,7 @@ class BestKeeper:
 
 # 训练rsgnn：flags包含模型的超参配置的命名空间对象，graph，随机数生成器的状态
 # 返回一个numpy数组，包含得到的representation的标识符IDs
-def train_rsgnn(flags, graph, rng, init):
+def train_rsgnn(flags, graph, rng, init, bce_loss):
     """Trainer function for RS-GNN."""
     features = graph['nodes']
     n_nodes = graph['n_node'][0]
@@ -91,7 +91,7 @@ def train_rsgnn(flags, graph, rng, init):
         def loss_fn():
             _, _, _, cluster_loss, logits = model(graph, c_graph)  # 将转换后的张量作为输入传递给模型
             dgi_loss = -torch.sum(torch.nn.functional.logsigmoid(labels * logits))
-            return dgi_loss + flags.lambda_ * cluster_loss
+            return dgi_loss + flags.lambda_ * cluster_loss + flags.lambda_ * bce_loss
 
         optimizer.zero_grad()
         loss = loss_fn()
