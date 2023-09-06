@@ -26,13 +26,15 @@ from torchvision.datasets import CIFAR100, CIFAR10, FashionMNIST, SVHN
 from sklearn.neighbors import kneighbors_graph
 from rsgnn import representation_selection
 import matplotlib.pyplot as plt
-import umap
-from models.query_models import VAE, Discriminator, GCN
+from models.query_models import GCN as Query_GCN
 from kcenterGreedy import kCenterGreedy
-from rsgnn_models import GraphConvolution, GCN
+from rsgnn_models import GCN as RSGNN_GCN
+from selection_methods import get_kcg
 
 import common_args
+
 args = common_args.parser.parse_args()
+
 
 class MyDataset(Dataset):
     def __init__(self, dataset_name, train_flag, transf):
@@ -64,6 +66,7 @@ def get_features(models, train_loader):
         feat = features  # .detach().cpu().numpy()
     return feat
 
+
 def get_features_centers(models, train_loader):
     models['backbone'].eval()
     with torch.cuda.device(CUDA_VISIBLE_DEVICES):
@@ -86,32 +89,6 @@ def aff_to_adj(x, y=None):
     adj = np.matmul(adj, np.diag(1 / adj_diag))
     return adj
 
-def get_kcg(models, labeled_data_size, unlabeled_loader):
-    models['backbone'].eval()
-
-    with torch.cuda.device(CUDA_VISIBLE_DEVICES):
-        features = torch.tensor([]).cuda()
-
-    with torch.no_grad():
-        for inputs, _, _ in unlabeled_loader:
-            with torch.cuda.device(CUDA_VISIBLE_DEVICES):
-                inputs = inputs.cuda()
-            _, features_batch, _ = models['backbone'](inputs)
-            features = torch.cat((features, features_batch), 0)
-        feat = features.detach().cpu().numpy()
-
-        # Create a new index range for selecting labeled data
-        new_av_idx = np.arange(SUBSET, (SUBSET + labeled_data_size))
-
-        # Use the kCenterGreedy algorithm to select a batch of data
-        sampling = kCenterGreedy(feat)
-        batch = sampling.select_batch_(new_av_idx, ADDENDUM)
-
-        # Calculate the indices of other data points that were not selected
-        other_idx = [x for x in range(SUBSET) if x not in batch]
-
-    # Return a combination of other indices and the selected batch indices
-    return other_idx + batch
 
 ##
 # Main
@@ -146,9 +123,18 @@ if __name__ == '__main__':
         if args.total:
             labeled_set = indices
         else:
-            subset = []
-            centers, labeled_set = representation_selection(subset, select='first', init=None, bce_loss=0)
-            #labeled_set = indices[:ADDENDUM]
+            with torch.cuda.device(CUDA_VISIBLE_DEVICES):
+                resnet18 = resnet.ResNet18(num_classes=NO_CLASSES).cuda()
+
+            models = {'backbone': resnet18}
+            torch.backends.cudnn.benchmark = True
+
+            unlabeled_loader = DataLoader(data_unlabeled, batch_size=BATCH,
+                                          sampler=SubsetSequentialSampler(indices),
+                                          pin_memory=True)
+            centers_indices = get_kcg(models, ADDENDUM, unlabeled_loader)
+            centers, labeled_set = representation_selection(ini_centers=centers_indices[-ADDENDUM:])
+            # labeled_set = indices[:ADDENDUM]
 
             unlabeled_set = [x for x in indices if x not in labeled_set]
 
@@ -157,25 +143,6 @@ if __name__ == '__main__':
                                   pin_memory=True, drop_last=True)
         test_loader = DataLoader(data_test, batch_size=BATCH)
         dataloaders = {'train': train_loader, 'test': test_loader}
-
-        '''visualization
-        data_train_features = node_features.numpy()  # 将样本特征展平为一维数组
-        data_train_labels = np.array(data_train.targets)
-        # Initialize UMAP with target dimension (e.g., 2 for 2D visualization)
-        umap_model = umap.UMAP(n_components=2, random_state=42)
-        # Fit and transform the feature data to 2D using UMAP
-        data_train_umap = umap_model.fit_transform(data_train_features)
-        plt.figure(figsize=(8, 6))
-        plt.scatter(data_train_umap[:, 0], data_train_umap[:, 1], c=data_train_labels, cmap='tab10', marker='o', s=10)
-        plt.colorbar()
-
-        plt.scatter(data_train_umap[labeled_set, 0], data_train_umap[labeled_set, 1], c='k', marker='x', s=100,
-                    label='Labeled Set')
-        plt.title('UMAP Visualization of CIFAR-10 Training Images')
-        plt.legend()
-        plt.savefig('umap_visualization.png', dpi=300)
-        plt.show()
-        '''
 
         for cycle in range(CYCLES):
 
@@ -188,7 +155,6 @@ if __name__ == '__main__':
             with torch.cuda.device(CUDA_VISIBLE_DEVICES):
                 resnet18 = resnet.ResNet18(num_classes=NO_CLASSES).cuda()
 
-
             models = {'backbone': resnet18}
             torch.backends.cudnn.benchmark = True
 
@@ -200,12 +166,6 @@ if __name__ == '__main__':
             sched_backbone = lr_scheduler.MultiStepLR(optim_backbone, milestones=MILESTONES)
             optimizers = {'backbone': optim_backbone}
             schedulers = {'backbone': sched_backbone}
-            if method == 'lloss':
-                optim_module = optim.SGD(models['module'].parameters(), lr=LR,
-                                         momentum=MOMENTUM, weight_decay=WDECAY)
-                sched_module = lr_scheduler.MultiStepLR(optim_module, milestones=MILESTONES)
-                optimizers = {'backbone': optim_backbone, 'module': optim_module}
-                schedulers = {'backbone': sched_backbone, 'module': sched_module}
 
             # Training and testing
             train(models, method, criterion, optimizers, schedulers, dataloaders, args.no_of_epochs, EPOCHL)
@@ -221,7 +181,7 @@ if __name__ == '__main__':
                 break
 
             # Get the indices of the unlabeled samples to train on next cycle
-            centers, arg = query_samples(models, method, data_unlabeled, subset, labeled_set, cycle, args, centers)
+            arg = query_samples(models, method, data_unlabeled, subset, labeled_set, cycle, args)
 
             # Update the labeled dataset and the unlabeled dataset, respectively
             labeled_set += list(torch.tensor(subset)[arg][-ADDENDUM:].numpy())

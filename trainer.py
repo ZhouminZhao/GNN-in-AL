@@ -58,7 +58,7 @@ class BestKeeper:
 
 # 训练rsgnn：flags包含模型的超参配置的命名空间对象，graph，随机数生成器的状态
 # 返回一个numpy数组，包含得到的representation的标识符IDs
-def train_rsgnn(flags, graph, rng, init, bce_loss):
+def train_rsgnn(flags, graph, rng, ini_centers):
     """Trainer function for RS-GNN."""
     features = graph['nodes']
     n_nodes = graph['n_node'][0]
@@ -66,7 +66,7 @@ def train_rsgnn(flags, graph, rng, init, bce_loss):
     #new_seed = rng.integers(0, np.iinfo(np.int32).max)
     #new_rng = np.random.default_rng(seed=new_seed)
     #rng = new_rng
-    model = rsgnn_models.RSGNN(nfeat=features.shape[1], hid_dim=flags.hid_dim, num_reps=flags.num_reps, init=init)
+    model = rsgnn_models.RSGNN(nfeat=features.shape[1], hid_dim=flags.hid_dim, num_reps=flags.num_reps, ini_centers=ini_centers)
     optimizer = optim.Adam(model.parameters(), lr=flags.lr, weight_decay=0.0)
 
     def corrupt_graph(corrupt_rng):
@@ -91,7 +91,7 @@ def train_rsgnn(flags, graph, rng, init, bce_loss):
         def loss_fn():
             _, _, _, cluster_loss, logits = model(graph, c_graph)  # 将转换后的张量作为输入传递给模型
             dgi_loss = -torch.sum(torch.nn.functional.logsigmoid(labels * logits))
-            return dgi_loss + flags.lambda_ * cluster_loss + flags.lambda_ * bce_loss
+            return dgi_loss + flags.lambda_ * cluster_loss
 
         optimizer.zero_grad()
         loss = loss_fn()
@@ -100,6 +100,7 @@ def train_rsgnn(flags, graph, rng, init, bce_loss):
         return optimizer, loss.item()
 
     best_keeper = BestKeeper('min')
+
     for epoch in range(1, flags.epochs + 1):
         #new_seed = rng.integers(0, np.iinfo(np.int32).max)
         #corrupt_rng = np.random.default_rng(seed=new_seed)

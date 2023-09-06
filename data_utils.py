@@ -58,25 +58,12 @@ def get_graph_edges(adj, features):
     return edges, len(edges)
 
 
-def get_features_train(models, unlabeled_loader):
-    models['backbone'].eval()
-    with torch.cuda.device(CUDA_VISIBLE_DEVICES):
-        features = torch.tensor([]).cuda()
-    with torch.no_grad():
-        for inputs, _ in unlabeled_loader:
-            with torch.cuda.device(CUDA_VISIBLE_DEVICES):
-                inputs = inputs.cuda()
-                _, features_batch, _ = models['backbone'](inputs)
-            features = torch.cat((features, features_batch), 0)
-        feat = features.detach().cpu().numpy()
-    return feat
-
 def get_features(models, unlabeled_loader):
     models['backbone'].eval()
     with torch.cuda.device(CUDA_VISIBLE_DEVICES):
         features = torch.tensor([]).cuda()
     with torch.no_grad():
-        for inputs, _, _ in unlabeled_loader:
+        for inputs, _ in unlabeled_loader:
             with torch.cuda.device(CUDA_VISIBLE_DEVICES):
                 inputs = inputs.cuda()
                 _, features_batch, _ = models['backbone'](inputs)
@@ -106,32 +93,21 @@ def knn_similarity_graph(data, k):
 
 
 # 创建jraph，返回图表示、labels和类别数
-def create_jraph(subset, select):
+def create_jraph():
     """Creates a jraph graph for a dataset."""
     data_train, data_unlabeled, _, _, NO_CLASSES, no_train = load_dataset('cifar10')
-    original_indices = random.sample(range(no_train), 10000)
+    original_indices = list(range(no_train))
     data_train_loader = DataLoader(data_train, batch_size=BATCH,
                                    sampler=SubsetSequentialSampler(original_indices),
                                    pin_memory=True)
-    data_unlabeled_loader = DataLoader(data_unlabeled, batch_size=BATCH,
-                                       sampler=SubsetSequentialSampler(subset),
-                                       pin_memory=True)
-    if select == 'first':
-        data_loader = data_train_loader
-        labels = onehot(data_train.targets)
-    elif select == 'sequential':
-        data_loader = data_unlabeled_loader
-        labels = onehot(data_unlabeled.cifar10.targets)
 
     with torch.cuda.device(CUDA_VISIBLE_DEVICES):
         resnet18 = resnet.ResNet18(num_classes=NO_CLASSES).cuda()
     model = {'backbone': resnet18}
     torch.backends.cudnn.benchmark = True
 
-    if select == 'first':
-        features = get_features_train(model, data_loader)
-    elif select == 'sequential':
-        features = get_features(model, data_loader)
+    features = get_features(model, data_train_loader)
+    labels = onehot(data_train.targets)
     adj = knn_similarity_graph(features, 15)
 
     edges, n_edge = get_graph_edges(adj, np.array(features))
