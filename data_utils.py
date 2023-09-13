@@ -19,6 +19,7 @@ import random
 import numpy as np
 from load_dataset import load_dataset
 import torch
+import torch.nn as nn
 from config import *
 from torch.utils.data import DataLoader
 from sampler import SubsetSequentialSampler
@@ -63,13 +64,24 @@ def get_features(models, unlabeled_loader):
     with torch.cuda.device(CUDA_VISIBLE_DEVICES):
         features = torch.tensor([]).cuda()
     with torch.no_grad():
-        for inputs, _ in unlabeled_loader:
+        for inputs, _, _ in unlabeled_loader:
             with torch.cuda.device(CUDA_VISIBLE_DEVICES):
                 inputs = inputs.cuda()
                 _, features_batch, _ = models['backbone'](inputs)
             features = torch.cat((features, features_batch), 0)
-        feat = features.detach().cpu().numpy()
+        feat = features#.detach().cpu().numpy()
     return feat
+
+def aff_to_adj(x, y=None):
+    #x = x.detach().cpu().numpy()
+    adj = np.matmul(x, x.transpose())
+    adj += -1.0 * np.eye(adj.shape[0])
+    adj_diag = np.sum(adj, axis=0)  # rowise sum
+    adj = np.matmul(adj, np.diag(1 / adj_diag))
+    adj = adj + np.eye(adj.shape[0])
+    adj = torch.Tensor(adj).cuda()
+
+    return adj
 
 def knn_similarity_graph(data, k):
     n = data.shape[0]
@@ -93,26 +105,30 @@ def knn_similarity_graph(data, k):
 
 
 # 创建jraph，返回图表示、labels和类别数
-def create_jraph():
+def create_jraph(subset, labeled_set, select_round):
     """Creates a jraph graph for a dataset."""
     data_train, data_unlabeled, _, _, NO_CLASSES, no_train = load_dataset('cifar10')
-    original_indices = list(range(no_train))
-    data_train_loader = DataLoader(data_train, batch_size=BATCH,
-                                   sampler=SubsetSequentialSampler(original_indices),
-                                   pin_memory=True)
 
+    original_indices = list(range(no_train))
+    data_loader = DataLoader(data_unlabeled, batch_size=BATCH,
+                             sampler=SubsetSequentialSampler(subset + labeled_set),
+                             pin_memory=True)
     with torch.cuda.device(CUDA_VISIBLE_DEVICES):
         resnet18 = resnet.ResNet18(num_classes=NO_CLASSES).cuda()
     model = {'backbone': resnet18}
     torch.backends.cudnn.benchmark = True
-
-    features = get_features(model, data_train_loader)
+    features = get_features(model, data_loader)
+    features = nn.functional.normalize(features)
+    features = features.detach().cpu().numpy()
     labels = onehot(data_train.targets)
+    #adj = aff_to_adj(features)
     adj = knn_similarity_graph(features, 15)
 
-    edges, n_edge = get_graph_edges(adj, np.array(features))
-    n_node = len(features)
-    features = torch.from_numpy(features)
+    edges, n_edge = get_graph_edges(adj, features)
+    n_node = features.shape[0]
+
+    features = torch.Tensor(features)
+
     graph = {
         'n_node': np.array([n_node]),
         'n_edge': np.array([n_edge]),

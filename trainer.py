@@ -58,7 +58,7 @@ class BestKeeper:
 
 # 训练rsgnn：flags包含模型的超参配置的命名空间对象，graph，随机数生成器的状态
 # 返回一个numpy数组，包含得到的representation的标识符IDs
-def train_rsgnn(flags, graph, rng, ini_centers):
+def train_rsgnn(flags, graph, rng, lbl, nlbl):
     """Trainer function for RS-GNN."""
     features = graph['nodes']
     n_nodes = graph['n_node'][0]
@@ -66,8 +66,9 @@ def train_rsgnn(flags, graph, rng, ini_centers):
     #new_seed = rng.integers(0, np.iinfo(np.int32).max)
     #new_rng = np.random.default_rng(seed=new_seed)
     #rng = new_rng
-    model = rsgnn_models.RSGNN(nfeat=features.shape[1], hid_dim=flags.hid_dim, num_reps=flags.num_reps, ini_centers=ini_centers)
+    model = rsgnn_models.RSGNN(nfeat=features.shape[1], hid_dim=flags.hid_dim, num_reps=flags.num_reps)
     optimizer = optim.Adam(model.parameters(), lr=flags.lr, weight_decay=0.0)
+    gcn_model = rsgnn_models.GCN(nfeat=features.shape[1], nhid=flags.hid_dim, nclass=1, drop_rate=0.5, activation='ReLU')
 
     def corrupt_graph(corrupt_rng):
         #seed_value = corrupt_rng.integers(0, np.iinfo(np.int32).max)
@@ -87,11 +88,25 @@ def train_rsgnn(flags, graph, rng, ini_centers):
         }
         return corrupted_graph
 
+    def BCEAdjLoss(scores, lbl, nlbl, l_adj):
+        lnl = torch.log(scores[lbl])  # labeled samples的分数的对数
+        lnu = torch.log(1 - scores[nlbl])  # unlabeled samples的补分数的对数
+        labeled_score = torch.mean(lnl)
+        unlabeled_score = torch.mean(lnu)
+        bce_adj_loss = -labeled_score - l_adj * unlabeled_score
+        return bce_adj_loss
+
     def train_step(optimizer, graph, c_graph):
         def loss_fn():
             _, _, _, cluster_loss, logits = model(graph, c_graph)  # 将转换后的张量作为输入传递给模型
             dgi_loss = -torch.sum(torch.nn.functional.logsigmoid(labels * logits))
-            return dgi_loss + flags.lambda_ * cluster_loss
+            print(dgi_loss)
+            print(cluster_loss)
+            _, outputs = gcn_model(graph['nodes'], graph['adj'], train=True)
+            lamda = 1.2
+            bce_loss = BCEAdjLoss(outputs, lbl, nlbl, lamda)
+            print(bce_loss)
+            return dgi_loss + flags.lambda_ * cluster_loss + 100000 * bce_loss
 
         optimizer.zero_grad()
         loss = loss_fn()

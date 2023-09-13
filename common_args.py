@@ -12,7 +12,7 @@ parser.add_argument("-r", "--dropout_rate", type=float, default=0.3,
                     help="Dropout rate of the graph neural network")
 parser.add_argument("-d", "--dataset", type=str, default="cifar100",
                     help="")
-parser.add_argument("-e", "--no_of_epochs", type=int, default=20,
+parser.add_argument("-e", "--no_of_epochs", type=int, default=200,
                     help="Number of epochs for the active learner")
 parser.add_argument("-m", "--method_type", type=str, default="lloss",
                     help="")
@@ -37,11 +37,11 @@ parser.add_argument("--valid_each", type=int, default=1,
                     help="Validate each k epochs.")
 parser.add_argument("--num_valid_nodes", type=int, default=500,
                     help="Number of validation set nodes.")
-parser.add_argument("--lr", type=float, default=0.01,
+parser.add_argument("--lr", type=float, default=0.1,
                     help="Learning rate.")
 parser.add_argument("--drop_rate", type=float, default=0.5,
                     help="Dropout probability.")
 parser.add_argument("--gcn_c_w_decay", type=float, default=5e-4,
                     help="Weight decay for the GCN.")
-parser.add_argument("--lambda_", type=float, default=0.001,
+parser.add_argument("--lambda_", type=float, default=0.1,
                     help="Hyperparam for JointDGI loss.")

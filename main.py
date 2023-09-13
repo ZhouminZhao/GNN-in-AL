@@ -26,9 +26,7 @@ from torchvision.datasets import CIFAR100, CIFAR10, FashionMNIST, SVHN
 from sklearn.neighbors import kneighbors_graph
 from rsgnn import representation_selection
 import matplotlib.pyplot as plt
-from models.query_models import GCN as Query_GCN
 from kcenterGreedy import kCenterGreedy
-from rsgnn_models import GCN as RSGNN_GCN
 from selection_methods import get_kcg
 
 import common_args
@@ -123,18 +121,9 @@ if __name__ == '__main__':
         if args.total:
             labeled_set = indices
         else:
-            with torch.cuda.device(CUDA_VISIBLE_DEVICES):
-                resnet18 = resnet.ResNet18(num_classes=NO_CLASSES).cuda()
-
-            models = {'backbone': resnet18}
-            torch.backends.cudnn.benchmark = True
-
-            unlabeled_loader = DataLoader(data_unlabeled, batch_size=BATCH,
-                                          sampler=SubsetSequentialSampler(indices),
-                                          pin_memory=True)
-            centers_indices = get_kcg(models, ADDENDUM, unlabeled_loader)
-            centers, labeled_set = representation_selection(ini_centers=centers_indices[-ADDENDUM:])
-            # labeled_set = indices[:ADDENDUM]
+            #centers, rep_ids = representation_selection(subset=None, select_round='first', graph_features=None)
+            labeled_set = indices[:ADDENDUM]
+            #labeled_set = rep_ids
 
             unlabeled_set = [x for x in indices if x not in labeled_set]
 
@@ -182,13 +171,13 @@ if __name__ == '__main__':
 
             # Get the indices of the unlabeled samples to train on next cycle
             arg = query_samples(models, method, data_unlabeled, subset, labeled_set, cycle, args)
-
+            print(len(arg), min(arg), max(arg))
             # Update the labeled dataset and the unlabeled dataset, respectively
-            labeled_set += list(torch.tensor(subset)[arg][-ADDENDUM:].numpy())
-            listd = list(torch.tensor(subset)[arg][:-ADDENDUM].numpy())
-            unlabeled_set = listd + unlabeled_set[SUBSET:]
-
+            labeled_set += list(torch.tensor(subset)[arg][:ADDENDUM].numpy())
             print(len(labeled_set), min(labeled_set), max(labeled_set))
+
+            listd = list(torch.tensor(subset)[arg][ADDENDUM:].numpy())
+            unlabeled_set = listd + unlabeled_set[SUBSET:]
             print(len(unlabeled_set), min(unlabeled_set), max(unlabeled_set))
             # Create a new dataloader for the updated labeled dataset
             dataloaders['train'] = DataLoader(data_train, batch_size=BATCH,

@@ -54,15 +54,13 @@ class Bilinear(nn.Module):
 class EucCluster(nn.Module):
     """Learnable KMeans Clustering."""
 
-    def __init__(self, num_reps, ini_centers, init_fn=nn.init.normal_):
+    def __init__(self, num_reps, init_fn=nn.init.normal_):
         super(EucCluster, self).__init__()
         self.num_reps = num_reps
         self.init_fn = init_fn
-        self.ini_centers_indices = ini_centers
 
     def forward(self, x):
-        centers = x[self.ini_centers_indices]
-        # centers = nn.Parameter(self.init_fn(torch.empty(self.num_reps, 128)))
+        centers = nn.Parameter(self.init_fn(torch.empty(self.num_reps, 128)))
         dists = torch.cdist(x, centers, p=2, compute_mode="donot_use_mm_for_euclid_dist")
         print(centers.shape)
         return find_unique_min_indices(dists), torch.min(dists, dim=1)[0], centers

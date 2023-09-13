@@ -234,55 +234,16 @@ def query_samples(model, method, data_unlabeled, subset, labeled_set, cycle, arg
         arg = torch.argsort(degrees, descending=True).cpu()
 
     if method == 'RSGNN':
-        unlabeled_loader = DataLoader(data_unlabeled, batch_size=BATCH,
-                                      sampler=SubsetSequentialSampler(subset + labeled_set),
-                                      # more convenient if we maintain the order of subset
-                                      pin_memory=True)
-        binary_labels = torch.cat((torch.zeros([SUBSET, 1]), (torch.ones([len(labeled_set), 1]))), 0)
-
-        features = get_features(model, unlabeled_loader)
-        features = nn.functional.normalize(features)
-        adj = aff_to_adj(features)
-
-        gcn_module = GCN(nfeat=features.shape[1],
-                         nhid=args.hidden_units,
-                         nclass=1,
-                         dropout=args.dropout_rate).cuda()
-        models = {'gcn_module': gcn_module}
-
-        optim_backbone = optim.Adam(models['gcn_module'].parameters(), lr=LR_GCN, weight_decay=WDECAY)
-        optimizers = {'gcn_module': optim_backbone}
-
+        # represent the indices of labeled and unlabeled samples
         lbl = np.arange(SUBSET, SUBSET + (cycle + 1) * ADDENDUM, 1)
         nlbl = np.arange(0, SUBSET, 1)
 
-        ############
-        for _ in range(20):
-            optimizers['gcn_module'].zero_grad()
-            outputs, _, _ = models['gcn_module'](features, adj)
-            lamda = args.lambda_loss
-            loss = BCEAdjLoss(outputs, lbl, nlbl, lamda)
-            loss.backward()
-            optimizers['gcn_module'].step()
-
-        models['gcn_module'].eval()
-        with torch.no_grad():
-            with torch.cuda.device(CUDA_VISIBLE_DEVICES):
-                inputs = features.cuda()
-                labels = binary_labels.cuda()
-            scores, features, feat = models['gcn_module'](inputs, adj)
-            feat = feat.detach().cpu().numpy()
-            new_av_idx = np.arange(SUBSET, (SUBSET + (cycle + 1) * ADDENDUM))
-            sampling2 = kCenterGreedy(feat)
-            batch2 = sampling2.select_batch_(new_av_idx, ADDENDUM)
-            other_idx = [x for x in range(SUBSET) if x not in batch2]
-            arg = other_idx + batch2
-        centers = features.cuda()
-        centers = centers[arg][:ADDENDUM]
-        print(centers.shape)
-        centers, selected = representation_selection(subset, select_round='sequential', init=centers)
-        remaining_points = np.setdiff1d(np.arange(SUBSET), selected)
-        arg = np.concatenate((selected, remaining_points))
+        centers, rep_ids = representation_selection(subset=subset, select_round='sequential', labeled_set=labeled_set, lbl=lbl, nlbl=nlbl)
+        remaining_numbers = []
+        for i in range(SUBSET):
+            if i not in rep_ids:
+                remaining_numbers.append(i)
+        arg = rep_ids + remaining_numbers
 
     if (method == 'UncertainGCN') or (method == 'CoreGCN'):
         # Create unlabeled dataloader for the unlabeled subset
