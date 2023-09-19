@@ -121,9 +121,9 @@ if __name__ == '__main__':
         if args.total:
             labeled_set = indices
         else:
-            #centers, rep_ids = representation_selection(subset=None, select_round='first', graph_features=None)
-            labeled_set = indices[:ADDENDUM]
-            #labeled_set = rep_ids
+            centers, rep_ids = representation_selection(subset=None, select_round='first', labeled_set=[], lbl=None, nlbl=None, centers=indices[:ADDENDUM])
+            #labeled_set = indices[:ADDENDUM]
+            labeled_set = rep_ids
 
             unlabeled_set = [x for x in indices if x not in labeled_set]
 

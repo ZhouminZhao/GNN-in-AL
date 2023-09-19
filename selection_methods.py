@@ -238,7 +238,16 @@ def query_samples(model, method, data_unlabeled, subset, labeled_set, cycle, arg
         lbl = np.arange(SUBSET, SUBSET + (cycle + 1) * ADDENDUM, 1)
         nlbl = np.arange(0, SUBSET, 1)
 
-        centers, rep_ids = representation_selection(subset=subset, select_round='sequential', labeled_set=labeled_set, lbl=lbl, nlbl=nlbl)
+        unlabeled_loader = DataLoader(data_unlabeled, batch_size=BATCH,
+                                      sampler=SubsetSequentialSampler(subset + labeled_set),
+                                      # more convenient if we maintain the order of subset
+                                      pin_memory=True)
+
+        arg = get_kcg(model, ADDENDUM * (cycle + 1), unlabeled_loader)
+        centers_indices = arg[-ADDENDUM:]
+        print(len(centers_indices), min(centers_indices), max(centers_indices))
+
+        centers, rep_ids = representation_selection(subset=subset, select_round='sequential', labeled_set=labeled_set, lbl=lbl, nlbl=nlbl, centers=centers_indices)
         remaining_numbers = []
         for i in range(SUBSET):
             if i not in rep_ids:

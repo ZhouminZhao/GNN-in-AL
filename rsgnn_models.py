@@ -74,16 +74,22 @@ class GCN(nn.Module):
         self.activation_fn = layers.Activation(activation)
         self.dropout = drop_rate
         self.nfeat = nfeat
+        self.linear = nn.Linear(nclass, 1)
+        self.fc_layer = nn.Linear(nfeat, nhid)
 
-    def forward(self, x, adj, train=True):
-        fc_layer = nn.Linear(self.nfeat, 128)
-        x = fc_layer(x)
+    def forward(self, x, adj, train):
+        '''
+        x = F.relu(self.gc1(x, adj))
+        feat = F.dropout(x, self.dropout, training=train)
+        x = self.gc3(feat, adj)
+        x = self.linear(x)
+        '''
+
+        x = self.fc_layer(x)
         x = self.activation_fn(self.gc2(x, adj))
-        if train:
-            x = F.dropout(x, self.dropout, training=True)
-        else:
-            x = F.dropout(x, self.dropout, training=False)
-        return x, torch.sigmoid(x)
+        feat = F.dropout(x, self.dropout, training=train)
+        x = F.relu(self.gc3(feat, adj))
+        return feat, torch.sigmoid(x)
 
 
 # DGI类，接收两个图数据对象graph和c_graph，通过bilinear产生表示的摘要和预测的logits
@@ -94,8 +100,8 @@ class DGI(nn.Module):
         self.gcn = GCN(nfeat, nhid, 10, 0.5, 'SeLU')
 
     def forward(self, graph, c_graph):
-        nodes1, _ = self.gcn(graph['nodes'], graph['adj'])
-        nodes2, _ = self.gcn(c_graph['nodes'], c_graph['adj'])
+        nodes1, _ = self.gcn(graph['nodes'], graph['adj'], train=True)
+        nodes2, _ = self.gcn(c_graph['nodes'], c_graph['adj'], train=True)
         summary = layers.dgi_readout(nodes1)
         nodes = torch.cat([nodes1, nodes2], dim=0)
         bilinear = layers.Bilinear(nodes.shape[-1], summary.shape[-1])
@@ -107,11 +113,11 @@ class DGI(nn.Module):
 class RSGNN(nn.Module):
     """The RSGNN model."""
 
-    def __init__(self, nfeat, hid_dim, num_reps):
+    def __init__(self, nfeat, hid_dim, num_reps, centers):
         super(RSGNN, self).__init__()
         self.num_reps = num_reps
         self.dgi = DGI(nfeat, hid_dim)
-        self.cluster = Cluster(num_reps)
+        self.cluster = Cluster(num_reps, centers)
 
     def forward(self, graph, c_graph):
         (h, _, _), logits = self.dgi(graph, c_graph)
@@ -124,10 +130,10 @@ class RSGNN(nn.Module):
 class Cluster(nn.Module):
     """Finds cluster centers given embeddings."""
 
-    def __init__(self, num_reps):
+    def __init__(self, num_reps, centers):
         super(Cluster, self).__init__()
         self.num_reps = num_reps
-        self.cluster = layers.EucCluster(num_reps=num_reps)
+        self.cluster = layers.EucCluster(num_reps=num_reps, centers=centers)
 
     def forward(self, embs):
         rep_ids, cluster_dists, centers = self.cluster(embs)
