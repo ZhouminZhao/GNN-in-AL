@@ -50,7 +50,7 @@ def add_self_loop(edges, n_node):
 
 # 从邻接矩阵和特征矩阵获取边集合和边数
 def get_graph_edges(adj, features):
-    coo = adj.to_sparse().coalesce().indices()
+    coo = adj.coalesce().indices()  # TODO: for me this .to_sparse() cause an error
     rows = coo[0]
     cols = coo[1]
     edges = {(row.item(), col.item()) for row, col in zip(rows, cols)}
@@ -124,8 +124,8 @@ def create_jraph(models, subset, labeled_set, select_round):
     """Creates a jraph graph for a dataset."""
     data_train, data_unlabeled, _, _, NO_CLASSES, no_train = load_dataset('cifar10')
 
-    original_indices = list(range(no_train))
     if select_round == 'first':
+        original_indices = list(range(no_train))
         data_loader = DataLoader(data_train, batch_size=BATCH,
                                  sampler=SubsetSequentialSampler(original_indices),
                                  pin_memory=True)

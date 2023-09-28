@@ -10,11 +10,11 @@ parser.add_argument("-n", "--hidden_units", type=int, default=128,
                     help="Number of hidden units of the graph")
 parser.add_argument("-r", "--dropout_rate", type=float, default=0.3,
                     help="Dropout rate of the graph neural network")
-parser.add_argument("-d", "--dataset", type=str, default="cifar100",
+parser.add_argument("-d", "--dataset", type=str, default="cifar10",
                     help="")
 parser.add_argument("-e", "--no_of_epochs", type=int, default=200,
                     help="Number of epochs for the active learner")
-parser.add_argument("-m", "--method_type", type=str, default="lloss",
+parser.add_argument("-m", "--method_type", type=str, default="RSGNN",
                     help="")
 parser.add_argument("-c", "--cycles", type=int, default=5,
                     help="Number of active learning cycles")

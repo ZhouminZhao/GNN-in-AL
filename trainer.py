@@ -57,13 +57,13 @@ def train_rsgnn(flags, graph, rng, lbl, nlbl, new_centers_indices):
     features = graph['nodes']
     n_nodes = graph['n_node'][0]
     labels = torch.cat([torch.ones(n_nodes), -torch.ones(n_nodes)], dim=0)
-    model = rsgnn_models.RSGNN(nfeat=features.shape[1], hid_dim=flags.hid_dim, num_reps=flags.num_reps,
+    num_reps = flags.num_reps if lbl is None else flags.num_reps + len(lbl) 
+    model = rsgnn_models.RSGNN(nfeat=features.shape[1], hid_dim=flags.hid_dim, num_reps=num_reps,
                                new_centers_indices=new_centers_indices)
     optimizer = optim.Adam(model.parameters(), lr=flags.lr, weight_decay=0.0)
 
-    def corrupt_graph(corrupt_rng):
-        permuted_nodes = torch.randperm(graph['nodes'].shape[0],
-                                        generator=torch.Generator().manual_seed(int(corrupt_rng)))
+    def corrupt_graph():
+        permuted_nodes = torch.randperm(graph['nodes'].shape[0])
         corrupted_nodes = graph['nodes'][permuted_nodes]
         corrupted_graph = {
             'n_node': graph['n_node'],
@@ -79,7 +79,7 @@ def train_rsgnn(flags, graph, rng, lbl, nlbl, new_centers_indices):
 
     def train_step(optimizer, graph, c_graph):
         def loss_fn():
-            outputs, _, _, cluster_loss, logits = model(graph, c_graph)
+            outputs, _, _, cluster_loss, logits = model(graph, c_graph, lbl)
             dgi_loss = -torch.sum(torch.nn.functional.logsigmoid(labels * logits))
             print(dgi_loss)
             print(cluster_loss)
@@ -109,14 +109,13 @@ def train_rsgnn(flags, graph, rng, lbl, nlbl, new_centers_indices):
     best_keeper = BestKeeper('min')
 
     for epoch in range(1, flags.epochs + 1):
-        rng, drop_rng, corrupt_rng = np.random.randint(low=0, high=10, size=3)
-        c_graph = corrupt_graph(corrupt_rng)
+        c_graph = corrupt_graph()
         optimizer, loss = train_step(optimizer, graph, c_graph)
         print('Epoch:', epoch, 'Loss:', loss)
         if epoch % flags.valid_each == 0:
             best_keeper.update(epoch, loss, model.state_dict())
 
     model.load_state_dict(best_keeper.get())
-    h, centers, rep_ids, _, _ = model(graph, c_graph)
+    h, centers, rep_ids, _, _ = model(graph, c_graph, lbl)
 
     return centers, rep_ids.numpy()

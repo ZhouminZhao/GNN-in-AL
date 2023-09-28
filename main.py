@@ -18,7 +18,7 @@ import resnet as resnet
 from train_test import train, test
 from load_dataset import load_dataset
 from selection_methods import query_samples
-from timm.loss import LabelSmoothingCrossEntropy, SoftTargetCrossEntropy
+# from timm.loss import LabelSmoothingCrossEntropy, SoftTargetCrossEntropy
 from config import *
 from torch.utils.data import Subset
 from torch.utils.data import DataLoader, Dataset
@@ -127,7 +127,7 @@ if __name__ == '__main__':
             models = {'backbone': resnet18}
             torch.backends.cudnn.benchmark = True
 
-            centers, rep_ids = representation_selection(models=models, subset=None, select_round='first', labeled_set=[], lbl=None, nlbl=None, cycle=0)
+            _, rep_ids = representation_selection(models=models, subset=None, select_round='first', labeled_set=[], lbl=None, nlbl=None, cycle=0)
             labeled_set = rep_ids
 
             unlabeled_set = [x for x in indices if x not in labeled_set]

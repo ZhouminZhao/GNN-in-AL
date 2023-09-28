@@ -53,7 +53,7 @@ def train_epoch(models, method, criterion, optimizers, dataloaders, epoch, epoch
     models['backbone'].train()
     global iters
     loss = 0.0
-    for data in tqdm(dataloaders['train'], leave=False, total=len(dataloaders['train'])):
+    for data in dataloaders['train']:
         with torch.cuda.device(CUDA_VISIBLE_DEVICES):
             inputs = data[0].cuda()
             labels = data[1].cuda()
@@ -73,7 +73,7 @@ def train(models, method, criterion, optimizers, schedulers, dataloaders, num_ep
     print('>> Train a Model.')
     best_acc = 0.
     
-    for epoch in range(num_epochs):
+    for epoch in tqdm(range(num_epochs)):
 
         best_loss = torch.tensor([0.5]).cuda()
         loss = train_epoch(models, method, criterion, optimizers, dataloaders, epoch, epoch_loss)

@@ -9,10 +9,10 @@ from torchvision.transforms import ToPILImage
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import timm
-from timm.data.mixup import Mixup
-from timm.data.dataset import ImageDataset
-from timm.data.loader import create_loader
+# import timm
+# from timm.data.mixup import Mixup
+# from timm.data.dataset import ImageDataset
+# from timm.data.loader import create_loader
 from PIL import Image
 
 

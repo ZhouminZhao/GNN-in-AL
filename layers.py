@@ -53,25 +53,57 @@ class Bilinear(nn.Module):
 class EucCluster(nn.Module):
     """Learnable KMeans Clustering."""
 
-    def __init__(self, num_reps, new_centers, init_fn=nn.init.normal_):
+    def __init__(self, num_reps, d_model, new_centers_indices=None,
+                 init_fn=nn.init.normal_):
         super(EucCluster, self).__init__()
         self.num_reps = num_reps
         self.init_fn = init_fn
-        self.new_centers = new_centers
+        self.new_centers_indices = new_centers_indices
+        self.are_centers_initialized = new_centers_indices is None
+        self.centers = nn.Parameter(self.init_fn(torch.empty(self.num_reps, d_model)))
 
-    def forward(self, x):
-        # centers = nn.Parameter(self.init_fn(torch.empty(self.num_reps, x.shape[-1])))
-        new_centers = self.new_centers
-        print(new_centers.shape)
-        dists = torch.cdist(x, new_centers, p=2, compute_mode="donot_use_mm_for_euclid_dist")
-        return find_unique_min_indices(dists), torch.min(dists, dim=1)[0], new_centers
+    def forward(self, x, lbl=None):
+        if not self.are_centers_initialized:
+            self.are_centers_initialized = True
+            # Initialize representatives with embeddings of provided node indices
+            with torch.no_grad():
+                self.centers[-len(self.new_centers_indices):].set_(x[self.new_centers_indices])
+        if lbl is not None:
+            # Fix representatives for labeled nodes
+            with torch.no_grad():
+                self.centers[:len(lbl)].set_(x[lbl])
+        dists = torch.cdist(x, self.centers, p=2, compute_mode="donot_use_mm_for_euclid_dist")
+        return find_unique_min_indices(dists, lbl=lbl), torch.min(dists, dim=1)[0], self.centers
 
 
-def find_unique_min_indices(dists):
+# TODO: technically the result is only used at inference, so perhaps use costly version below but only outside training
+@torch.no_grad()
+def find_unique_min_indices(dists, lbl=None):
+    # Ignore labeled nodes for selecting next representatives
+    if lbl is not None:
+        mask = torch.ones(dists.shape[0], dtype=bool, device=dists.device)
+        mask[lbl] = False
+        dists = dists[mask, len(lbl) - dists.shape[1]:]
+
     n, m = dists.shape
+
+    closest_ids = dists.argmin(0)
+    while True:
+        closest_ids = closest_ids.unique()
+        if closest_ids.shape[0] == m:
+            break
+        # Randomly sample further representatives
+        closest_ids = torch.concatenate(
+            (closest_ids, torch.randint(n, (m - closest_ids.shape[0],))))
+        
+    if lbl is not None:
+        # Map back to the original indices
+        closest_ids = torch.where(mask)[0][closest_ids]
+
+    return closest_ids
+        
     unique_min_indices = torch.zeros(m, dtype=torch.long)
     found_indices = set()
-
     for i in range(m):
         col = dists[:, i]
         min_val = float('inf')

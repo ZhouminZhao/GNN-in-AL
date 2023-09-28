@@ -86,46 +86,47 @@ class GCN(nn.Module):
 
 class DGI(nn.Module):
 
-    def __init__(self, nfeat, nhid):
+    def __init__(self, nfeat, nhid, n_class=10, drop_rate=0.5, activation='SeLU'):
         super(DGI, self).__init__()
-        self.gcn = GCN(nfeat, nhid, 10, 0.5, 'SeLU')
+        self.gcn = GCN(nfeat, nhid, n_class, drop_rate, activation)
+        self.bilinear = layers.Bilinear(nhid, nhid)
 
     def forward(self, graph, c_graph):
         nodes1, _ = self.gcn(graph['nodes'], graph['adj'], train=True)
         nodes2, _ = self.gcn(c_graph['nodes'], c_graph['adj'], train=True)
         summary = layers.dgi_readout(nodes1)
         nodes = torch.cat([nodes1, nodes2], dim=0)
-        bilinear = layers.Bilinear(nodes.shape[-1], summary.shape[-1])
-        logits = bilinear(nodes, summary)
+        logits = self.bilinear(nodes, summary)
         return (nodes1, nodes2, summary), logits
 
 
 class RSGNN(nn.Module):
     """The RSGNN model."""
 
-    def __init__(self, nfeat, hid_dim, num_reps, new_centers_indices):
+    def __init__(self, nfeat, hid_dim, num_reps, new_centers_indices=None):
         super(RSGNN, self).__init__()
         self.num_reps = num_reps
         self.dgi = DGI(nfeat, hid_dim)
-        self.new_centers_indices = new_centers_indices
+        self.cluster = Cluster(self.num_reps, hid_dim,
+                               new_centers_indices=new_centers_indices)
 
-    def forward(self, graph, c_graph):
+    def forward(self, graph, c_graph, lbl=None):
         (h, _, _), logits = self.dgi(graph, c_graph)
         h = layers.normalize(h)
-        cluster = Cluster(num_reps=self.num_reps, new_centers=h[self.new_centers_indices])
-        centers, rep_ids, cluster_loss = cluster(h[:SUBSET])
+        centers, rep_ids, cluster_loss = self.cluster(h, lbl=lbl) # TODO: Where does SUBSET come from? self.cluster(h[:SUBSET])
         return h, centers, rep_ids, cluster_loss, logits
 
 
 class Cluster(nn.Module):
     """Finds cluster centers given embeddings."""
 
-    def __init__(self, num_reps, new_centers):
+    def __init__(self, num_reps, hid_dim, new_centers_indices=None):
         super(Cluster, self).__init__()
         self.num_reps = num_reps
-        self.cluster = layers.EucCluster(num_reps=num_reps, new_centers=new_centers)
+        self.cluster = layers.EucCluster(
+            num_reps, hid_dim, new_centers_indices=new_centers_indices)
 
-    def forward(self, embs):
-        rep_ids, cluster_dists, centers = self.cluster(embs)
+    def forward(self, embs, lbl=None):
+        rep_ids, cluster_dists, centers = self.cluster(embs, lbl=lbl)
         loss = torch.sum(cluster_dists)
         return centers, rep_ids, loss
