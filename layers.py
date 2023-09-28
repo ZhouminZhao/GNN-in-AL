@@ -20,7 +20,6 @@ from load_dataset import load_dataset
 from data_utils import knn_similarity_graph
 
 
-# 激活函数层
 class Activation(nn.Module):
     """Activation function."""
 
@@ -39,7 +38,6 @@ class Activation(nn.Module):
         return self.act_fn(x)
 
 
-# 双线性层
 class Bilinear(nn.Module):
     """A Bilinear Layer."""
 
@@ -52,25 +50,21 @@ class Bilinear(nn.Module):
         return torch.matmul(torch.matmul(x_l, self.kernel), x_r)
 
 
-# KMeans聚类层，接收输入的x，返回聚类结果、最小距离和聚类中心
 class EucCluster(nn.Module):
     """Learnable KMeans Clustering."""
 
-    def __init__(self, num_reps, centers, init_fn=nn.init.normal_):
+    def __init__(self, num_reps, new_centers, init_fn=nn.init.normal_):
         super(EucCluster, self).__init__()
         self.num_reps = num_reps
         self.init_fn = init_fn
-        self.centers = centers
-        self.gcn = GCN(512, 128, 10, 0.5, 'ReLU')
+        self.new_centers = new_centers
 
     def forward(self, x):
-        #original_centers = self.centers
-        #adj = knn_similarity_graph(original_centers, 15)
-        #centers, _ = self.gcn(original_centers, adj)
-        centers = nn.Parameter(self.init_fn(torch.empty(self.num_reps, x.shape[-1])))
-        print(centers.shape)
-        dists = torch.cdist(x, centers, p=2, compute_mode="donot_use_mm_for_euclid_dist")
-        return find_unique_min_indices(dists), torch.min(dists, dim=1)[0], centers
+        # centers = nn.Parameter(self.init_fn(torch.empty(self.num_reps, x.shape[-1])))
+        new_centers = self.new_centers
+        print(new_centers.shape)
+        dists = torch.cdist(x, new_centers, p=2, compute_mode="donot_use_mm_for_euclid_dist")
+        return find_unique_min_indices(dists), torch.min(dists, dim=1)[0], new_centers
 
 
 def find_unique_min_indices(dists):
@@ -93,22 +87,18 @@ def find_unique_min_indices(dists):
     return unique_min_indices
 
 
-# DGI (Deep Graph Infomax)的读出函数，接收节点表示node_embs，应用sigmoid函数
 def dgi_readout(node_embs):
     return torch.sigmoid(torch.mean(node_embs, dim=0))
 
 
-# 减去均值的函数
 def subtract_mean(embs):
     return embs - torch.mean(embs, dim=0)
 
 
-# 除以L2范数的函数
 def divide_by_l2_norm(embs):
     norm = torch.norm(embs, dim=1, keepdim=True)
     return embs / norm
 
 
-# 归一化节点表示，先减去均值，再除以L2范数
 def normalize(node_embs):
     return divide_by_l2_norm(subtract_mean(node_embs))

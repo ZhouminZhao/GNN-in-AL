@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""GNN Models in jraph/flax."""
 
 import math
 import torch
@@ -21,6 +20,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.parameter import Parameter
 from torch.nn.modules.module import Module
+from config import *
 
 import layers
 
@@ -64,7 +64,6 @@ class GraphConvolution(Module):
             + str(self.out_features) + ')'
 
 
-# GCN类，接收图数据对象graph的nodes，返回最终的节点表示
 class GCN(nn.Module):
     def __init__(self, nfeat, nhid, nclass, drop_rate, activation):
         super(GCN, self).__init__()
@@ -78,13 +77,6 @@ class GCN(nn.Module):
         self.fc_layer = nn.Linear(nfeat, nhid)
 
     def forward(self, x, adj, train):
-        '''
-        x = F.relu(self.gc1(x, adj))
-        feat = F.dropout(x, self.dropout, training=train)
-        x = self.gc3(feat, adj)
-        x = self.linear(x)
-        '''
-
         x = self.fc_layer(x)
         x = self.activation_fn(self.gc2(x, adj))
         feat = F.dropout(x, self.dropout, training=train)
@@ -92,7 +84,6 @@ class GCN(nn.Module):
         return feat, torch.sigmoid(x)
 
 
-# DGI类，接收两个图数据对象graph和c_graph，通过bilinear产生表示的摘要和预测的logits
 class DGI(nn.Module):
 
     def __init__(self, nfeat, nhid):
@@ -109,31 +100,30 @@ class DGI(nn.Module):
         return (nodes1, nodes2, summary), logits
 
 
-# RSGNN类，接收两个图数据对象graph和c_graph，生成节点表示，并进行归一化，计算聚类中心、表示的标识符和聚类损失
 class RSGNN(nn.Module):
     """The RSGNN model."""
 
-    def __init__(self, nfeat, hid_dim, num_reps, centers):
+    def __init__(self, nfeat, hid_dim, num_reps, new_centers_indices):
         super(RSGNN, self).__init__()
         self.num_reps = num_reps
         self.dgi = DGI(nfeat, hid_dim)
-        self.cluster = Cluster(num_reps, centers)
+        self.new_centers_indices = new_centers_indices
 
     def forward(self, graph, c_graph):
         (h, _, _), logits = self.dgi(graph, c_graph)
         h = layers.normalize(h)
-        centers, rep_ids, cluster_loss = self.cluster(h[:10000])
+        cluster = Cluster(num_reps=self.num_reps, new_centers=h[self.new_centers_indices])
+        centers, rep_ids, cluster_loss = cluster(h[:SUBSET])
         return h, centers, rep_ids, cluster_loss, logits
 
 
-# Cluster类，接收节点表示embs，计算聚类中心、表示的标识符和聚类损失
 class Cluster(nn.Module):
     """Finds cluster centers given embeddings."""
 
-    def __init__(self, num_reps, centers):
+    def __init__(self, num_reps, new_centers):
         super(Cluster, self).__init__()
         self.num_reps = num_reps
-        self.cluster = layers.EucCluster(num_reps=num_reps, centers=centers)
+        self.cluster = layers.EucCluster(num_reps=num_reps, new_centers=new_centers)
 
     def forward(self, embs):
         rep_ids, cluster_dists, centers = self.cluster(embs)

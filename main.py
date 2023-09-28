@@ -81,9 +81,9 @@ def get_features_centers(models, train_loader):
 
 def aff_to_adj(x, y=None):
     adj = np.matmul(x, x.transpose())
-    adj -= np.eye(adj.shape[0])  # 将对角线元素设置为0而不是-1
-    adj_diag = np.sum(adj, axis=1)  # 沿行求和而不是列
-    adj_diag[adj_diag == 0] = 1  # 处理度为0的情况，避免除以零
+    adj -= np.eye(adj.shape[0])
+    adj_diag = np.sum(adj, axis=1)
+    adj_diag[adj_diag == 0] = 1
     adj = np.matmul(adj, np.diag(1 / adj_diag))
     return adj
 
@@ -121,8 +121,13 @@ if __name__ == '__main__':
         if args.total:
             labeled_set = indices
         else:
-            centers, rep_ids = representation_selection(subset=None, select_round='first', labeled_set=[], lbl=None, nlbl=None, centers=indices[:ADDENDUM])
-            #labeled_set = indices[:ADDENDUM]
+            with torch.cuda.device(CUDA_VISIBLE_DEVICES):
+                resnet18 = resnet.ResNet18(num_classes=NO_CLASSES).cuda()
+
+            models = {'backbone': resnet18}
+            torch.backends.cudnn.benchmark = True
+
+            centers, rep_ids = representation_selection(models=models, subset=None, select_round='first', labeled_set=[], lbl=None, nlbl=None, cycle=0)
             labeled_set = rep_ids
 
             unlabeled_set = [x for x in indices if x not in labeled_set]
@@ -139,13 +144,6 @@ if __name__ == '__main__':
             if not args.total:
                 random.shuffle(unlabeled_set)
                 subset = unlabeled_set[:SUBSET]
-
-            # Model - create new instance for every cycle so that it resets
-            with torch.cuda.device(CUDA_VISIBLE_DEVICES):
-                resnet18 = resnet.ResNet18(num_classes=NO_CLASSES).cuda()
-
-            models = {'backbone': resnet18}
-            torch.backends.cudnn.benchmark = True
 
             # Loss, criterion and scheduler (re)initialization
             criterion = nn.CrossEntropyLoss(reduction='none')

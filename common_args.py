@@ -33,7 +33,7 @@ parser.add_argument("--gcn_c_epochs", type=int, default=1000,
                     help="Number of epochs for GCN-C.")
 parser.add_argument("--num_reps_multiplier", type=int, default=100,
                     help="num_reps = num_class * num_reps_multiplier.")
-parser.add_argument("--valid_each", type=int, default=10,
+parser.add_argument("--valid_each", type=int, default=1,
                     help="Validate each k epochs.")
 parser.add_argument("--num_valid_nodes", type=int, default=500,
                     help="Number of validation set nodes.")
@@ -43,5 +43,7 @@ parser.add_argument("--drop_rate", type=float, default=0.5,
                     help="Dropout probability.")
 parser.add_argument("--gcn_c_w_decay", type=float, default=5e-4,
                     help="Weight decay for the GCN.")
-parser.add_argument("--lambda_", type=float, default=0.001,
-                    help="Hyperparam for JointDGI loss.")
+parser.add_argument("--cluster_loss_lambda", type=float, default=100,
+                    help="Hyperparameter for JointDGI loss.")
+parser.add_argument("--bce_loss_lambda", type=float, default=10,
+                    help="Hyperparameter for BCE loss.")

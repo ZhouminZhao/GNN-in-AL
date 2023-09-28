@@ -120,26 +120,21 @@ def knn_similarity_graph(data, k):
 
 
 # 创建jraph，返回图表示、labels和类别数
-def create_jraph(subset, labeled_set, select_round):
+def create_jraph(models, subset, labeled_set, select_round):
     """Creates a jraph graph for a dataset."""
     data_train, data_unlabeled, _, _, NO_CLASSES, no_train = load_dataset('cifar10')
-
-    with torch.cuda.device(CUDA_VISIBLE_DEVICES):
-        resnet18 = resnet.ResNet18(num_classes=NO_CLASSES).cuda()
-    model = {'backbone': resnet18}
-    torch.backends.cudnn.benchmark = True
 
     original_indices = list(range(no_train))
     if select_round == 'first':
         data_loader = DataLoader(data_train, batch_size=BATCH,
                                  sampler=SubsetSequentialSampler(original_indices),
                                  pin_memory=True)
-        features = get_features_train(model, data_loader)
+        features = get_features_train(models, data_loader)
     elif select_round == 'sequential':
         data_loader = DataLoader(data_unlabeled, batch_size=BATCH,
                                  sampler=SubsetSequentialSampler(subset + labeled_set),
                                  pin_memory=True)
-        features = get_features(model, data_loader)
+        features = get_features(models, data_loader)
 
     features = nn.functional.normalize(features)
     features = features.detach().cpu().numpy()

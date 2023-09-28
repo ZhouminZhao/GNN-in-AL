@@ -22,7 +22,6 @@ import torch.optim as optim
 import rsgnn_models
 
 
-# 跟踪训练中的最佳result和params
 class BestKeeper:
     """Keeps best performance and model params during training."""
 
@@ -31,14 +30,12 @@ class BestKeeper:
         self.best_result = np.inf if min_or_max == 'min' else 0.0
         self.best_params = None
 
-    # 打印当前epoch的result
     def print_(self, epoch, result):
         if self.min_or_max == 'min':
             print('Epoch:', epoch, 'Loss:', result)
         elif self.min_or_max == 'max':
             print('Epoch:', epoch, 'Accu:', result)
 
-    # 更新最佳result和params
     def update(self, epoch, result, params, print_=True):
         """Updates the best performance and model params if necessary."""
         if print_:
@@ -51,29 +48,20 @@ class BestKeeper:
             self.best_result = result
             self.best_params = params
 
-    # 返回最佳params
     def get(self):
         return self.best_params
 
 
-# 训练rsgnn：flags包含模型的超参配置的命名空间对象，graph，随机数生成器的状态
-# 返回一个numpy数组，包含得到的representation的标识符IDs
-def train_rsgnn(flags, graph, rng, lbl, nlbl, centers):
+def train_rsgnn(flags, graph, rng, lbl, nlbl, new_centers_indices):
     """Trainer function for RS-GNN."""
     features = graph['nodes']
     n_nodes = graph['n_node'][0]
     labels = torch.cat([torch.ones(n_nodes), -torch.ones(n_nodes)], dim=0)
-    #new_seed = rng.integers(0, np.iinfo(np.int32).max)
-    #new_rng = np.random.default_rng(seed=new_seed)
-    #rng = new_rng
-    model = rsgnn_models.RSGNN(nfeat=features.shape[1], hid_dim=flags.hid_dim, num_reps=flags.num_reps, centers=features[centers])
-    linear = torch.nn.Linear(in_features=128, out_features=1)
-    optimizer = optim.Adam([{'params': model.parameters()}, {'params': linear.parameters()}], lr=flags.lr, weight_decay=0.0)
-    gcn_model = rsgnn_models.GCN(nfeat=features.shape[1], nhid=flags.hid_dim, nclass=1, drop_rate=0.5, activation='ReLU')
+    model = rsgnn_models.RSGNN(nfeat=features.shape[1], hid_dim=flags.hid_dim, num_reps=flags.num_reps,
+                               new_centers_indices=new_centers_indices)
+    optimizer = optim.Adam(model.parameters(), lr=flags.lr, weight_decay=0.0)
 
     def corrupt_graph(corrupt_rng):
-        #seed_value = corrupt_rng.integers(0, np.iinfo(np.int32).max)
-        #permuted_nodes = torch.randperm(graph['nodes'].shape[0], generator=torch.Generator().manual_seed(seed_value.item()))
         permuted_nodes = torch.randperm(graph['nodes'].shape[0],
                                         generator=torch.Generator().manual_seed(int(corrupt_rng)))
         corrupted_nodes = graph['nodes'][permuted_nodes]
@@ -89,29 +77,28 @@ def train_rsgnn(flags, graph, rng, lbl, nlbl, centers):
         }
         return corrupted_graph
 
-    def BCEAdjLoss(scores, lbl, nlbl, l_adj):
-        if lbl == None:
-            bce_adj_loss = 0
-        else:
-            lnl = torch.log(scores[lbl])  # labeled samples的分数的对数
-            lnu = torch.log(1 - scores[nlbl])  # unlabeled samples的补分数的对数
-            labeled_score = torch.mean(lnl)
-            unlabeled_score = torch.mean(lnu)
-            bce_adj_loss = -labeled_score - l_adj * unlabeled_score
-        return bce_adj_loss
-
     def train_step(optimizer, graph, c_graph):
         def loss_fn():
-            outputs, _, _, cluster_loss, logits = model(graph, c_graph)  # 将转换后的张量作为输入传递给模型
+            outputs, _, _, cluster_loss, logits = model(graph, c_graph)
             dgi_loss = -torch.sum(torch.nn.functional.logsigmoid(labels * logits))
             print(dgi_loss)
             print(cluster_loss)
-            #_, outputs = gcn_model(graph['nodes'], graph['adj'], train=True)
-            outputs = linear(outputs)
-            lamda = 1.2
-            bce_loss = BCEAdjLoss(outputs, lbl, nlbl, lamda)
+            outputs = torch.sigmoid(outputs).mean(dim=1, keepdim=True)
+
+            if np.any(lbl == None):
+                bce_loss = 0
+            else:
+                # Create target tensors for labeled and unlabeled samples
+                labeled_targets = torch.ones_like(torch.from_numpy(lbl))
+                unlabeled_targets = torch.zeros_like(torch.from_numpy(nlbl))
+                # Combine labeled and unlabeled targets
+                targets = torch.cat((labeled_targets, unlabeled_targets), dim=0).view(-1, 1).float()
+                # Calculate BCE loss
+                bceloss = torch.nn.BCEWithLogitsLoss(reduction='sum')
+                bce_loss = bceloss(outputs, targets)
+
             print(bce_loss)
-            return dgi_loss + flags.lambda_ * cluster_loss + 100000 * bce_loss
+            return dgi_loss + flags.cluster_loss_lambda * cluster_loss + flags.bce_loss_lambda * bce_loss
 
         optimizer.zero_grad()
         loss = loss_fn()
@@ -122,8 +109,6 @@ def train_rsgnn(flags, graph, rng, lbl, nlbl, centers):
     best_keeper = BestKeeper('min')
 
     for epoch in range(1, flags.epochs + 1):
-        #new_seed = rng.integers(0, np.iinfo(np.int32).max)
-        #corrupt_rng = np.random.default_rng(seed=new_seed)
         rng, drop_rng, corrupt_rng = np.random.randint(low=0, high=10, size=3)
         c_graph = corrupt_graph(corrupt_rng)
         optimizer, loss = train_step(optimizer, graph, c_graph)

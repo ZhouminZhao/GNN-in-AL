@@ -24,6 +24,9 @@ os.environ['FLAX_LAZY_RNG'] = 'false'
 # pylint: disable=g-import-not-at-top
 import types
 import numpy as np
+import torch
+from kcenterGreedy import kCenterGreedy
+from config import *
 
 import data_utils
 import trainer
@@ -33,7 +36,6 @@ import common_args
 args = common_args.parser.parse_args()
 
 
-# 为rsgnn和gcn_c创建命名空间对象
 def get_rsgnn_flags(num_classes):
     return types.SimpleNamespace(
         hid_dim=args.rsgnn_hid_dim,
@@ -42,14 +44,27 @@ def get_rsgnn_flags(num_classes):
         num_reps=args.num_reps_multiplier * num_classes,
         valid_each=args.valid_each,
         lr=args.lr,
-        lambda_=args.lambda_)
+        cluster_loss_lambda=args.cluster_loss_lambda,
+        bce_loss_lambda=args.bce_loss_lambda
+        )
 
 
-def representation_selection(subset, select_round, labeled_set, lbl, nlbl, centers):
+def get_kcg(labeled_data_size, features):
+    feat = features.detach().cpu().numpy()
+    # index of datapoints already selected
+    new_av_idx = np.arange(SUBSET, (SUBSET + labeled_data_size))
+    sampling = kCenterGreedy(feat)
+    # indices of selected unlabeled datapoints
+    batch = sampling.select_batch_(new_av_idx, ADDENDUM)
+    return batch
+
+
+def representation_selection(models, subset, select_round, labeled_set, lbl, nlbl, cycle):
     """Runs node selector, receives selected nodes, trains GCN."""
     np.random.seed(args.seed)
-    key = np.random.default_rng(args.seed)  # 设置随机种子
-    graph, labels, num_classes = data_utils.create_jraph(subset, labeled_set, select_round)  # 加载图、label和类别数
-    rsgnn_flags = get_rsgnn_flags(num_classes)  # 获取rsgnn的超参配置
-    centers, selected = trainer.train_rsgnn(rsgnn_flags, graph, key, lbl, nlbl, centers)  # 使用rsgnn并获取learned embeddings和选定的节点
+    key = np.random.default_rng(args.seed)
+    graph, labels, num_classes = data_utils.create_jraph(models, subset, labeled_set, select_round)
+    new_centers_indices = get_kcg(ADDENDUM * (cycle + 1), graph['nodes'])
+    rsgnn_flags = get_rsgnn_flags(num_classes)
+    centers, selected = trainer.train_rsgnn(rsgnn_flags, graph, key, lbl, nlbl, new_centers_indices)
     return centers, selected.tolist()
