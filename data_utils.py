@@ -28,29 +28,25 @@ from sklearn.neighbors import NearestNeighbors
 from scipy.sparse import lil_matrix
 
 
-# 将labels转为one-hot编码，接收一个标签列表
 def onehot(labels):
     unique_labels = np.unique(labels)
     return np.identity(len(unique_labels))[np.array(labels)]
 
 
-# 对称化邻接矩阵
 def symmetrize(edges):
     """Symmetrizes the adjacency."""
     inv_edges = {(d, s) for s, d in edges}
     return edges.union(inv_edges)
 
 
-# 在图中添加自环，返回边集合
 def add_self_loop(edges, n_node):
     """Adds self loop."""
     self_loop_edges = {(s, s) for s in range(n_node)}
     return edges.union(self_loop_edges)
 
 
-# 从邻接矩阵和特征矩阵获取边集合和边数
 def get_graph_edges(adj, features):
-    coo = adj.coalesce().indices()  # TODO: for me this .to_sparse() cause an error
+    coo = adj.coalesce().indices()
     rows = coo[0]
     cols = coo[1]
     edges = {(row.item(), col.item()) for row, col in zip(rows, cols)}
@@ -119,8 +115,7 @@ def knn_similarity_graph(data, k):
     return adj
 
 
-# 创建jraph，返回图表示、labels和类别数
-def create_jraph(models, subset, labeled_set, select_round):
+def create_graph(models, subset, labeled_set, select_round):
     """Creates a jraph graph for a dataset."""
     data_train, data_unlabeled, _, _, NO_CLASSES, no_train = load_dataset('cifar10')
 
@@ -139,7 +134,6 @@ def create_jraph(models, subset, labeled_set, select_round):
     features = nn.functional.normalize(features)
     features = features.detach().cpu().numpy()
     labels = onehot(data_train.targets)
-    #adj = aff_to_adj(features)
     adj = knn_similarity_graph(features, 15)
 
     edges, n_edge = get_graph_edges(adj, features)

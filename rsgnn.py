@@ -42,8 +42,8 @@ def get_rsgnn_flags(num_classes):
         epochs=args.rsgnn_epochs,
         num_classes=num_classes,
         num_reps=args.num_reps_multiplier * num_classes,
-        valid_each=args.valid_each,
         lr=args.lr,
+        DGI_loss_lambda=args.DGI_loss_lambda,
         cluster_loss_lambda=args.cluster_loss_lambda,
         bce_loss_lambda=args.bce_loss_lambda
         )
@@ -61,10 +61,8 @@ def get_kcg(labeled_data_size, features):
 
 def representation_selection(models, subset, select_round, labeled_set, lbl, nlbl, cycle):
     """Runs node selector, receives selected nodes, trains GCN."""
-    np.random.seed(args.seed)
-    key = np.random.default_rng(args.seed)
-    graph, labels, num_classes = data_utils.create_jraph(models, subset, labeled_set, select_round)
+    graph, labels, num_classes = data_utils.create_graph(models, subset, labeled_set, select_round)
     new_centers_indices = get_kcg(ADDENDUM * (cycle + 1), graph['nodes'])
     rsgnn_flags = get_rsgnn_flags(num_classes)
-    centers, selected = trainer.train_rsgnn(rsgnn_flags, graph, key, lbl, nlbl, new_centers_indices)
+    centers, selected = trainer.train_rsgnn(rsgnn_flags, graph, lbl, nlbl, new_centers_indices)
     return centers, selected.tolist()

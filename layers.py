@@ -53,8 +53,7 @@ class Bilinear(nn.Module):
 class EucCluster(nn.Module):
     """Learnable KMeans Clustering."""
 
-    def __init__(self, num_reps, d_model, new_centers_indices=None,
-                 init_fn=nn.init.normal_):
+    def __init__(self, num_reps, d_model, new_centers_indices=None, init_fn=nn.init.normal_):
         super(EucCluster, self).__init__()
         self.num_reps = num_reps
         self.init_fn = init_fn
@@ -95,13 +94,13 @@ def find_unique_min_indices(dists, lbl=None):
         # Randomly sample further representatives
         closest_ids = torch.concatenate(
             (closest_ids, torch.randint(n, (m - closest_ids.shape[0],))))
-        
+
     if lbl is not None:
         # Map back to the original indices
         closest_ids = torch.where(mask)[0][closest_ids]
 
     return closest_ids
-        
+
     unique_min_indices = torch.zeros(m, dtype=torch.long)
     found_indices = set()
     for i in range(m):

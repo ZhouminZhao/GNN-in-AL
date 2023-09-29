@@ -11,23 +11,16 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
 from torch.utils.data.sampler import SubsetRandomSampler
-from data.sampler import SubsetSequentialSampler
 
 # Custom
 import resnet as resnet
 from train_test import train, test
 from load_dataset import load_dataset
 from selection_methods import query_samples
-# from timm.loss import LabelSmoothingCrossEntropy, SoftTargetCrossEntropy
 from config import *
-from torch.utils.data import Subset
 from torch.utils.data import DataLoader, Dataset
 from torchvision.datasets import CIFAR100, CIFAR10, FashionMNIST, SVHN
-from sklearn.neighbors import kneighbors_graph
 from rsgnn import representation_selection
-import matplotlib.pyplot as plt
-from kcenterGreedy import kCenterGreedy
-from selection_methods import get_kcg
 
 import common_args
 

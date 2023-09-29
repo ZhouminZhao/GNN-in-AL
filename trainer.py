@@ -25,39 +25,33 @@ import rsgnn_models
 class BestKeeper:
     """Keeps best performance and model params during training."""
 
-    def __init__(self, min_or_max):
-        self.min_or_max = min_or_max
-        self.best_result = np.inf if min_or_max == 'min' else 0.0
+    def __init__(self):
+        self.best_epoch = 1
+        self.best_result = np.inf
         self.best_params = None
+        self.best_c_graph = None
 
-    def print_(self, epoch, result):
-        if self.min_or_max == 'min':
-            print('Epoch:', epoch, 'Loss:', result)
-        elif self.min_or_max == 'max':
-            print('Epoch:', epoch, 'Accu:', result)
+    def print_(self):
+        print('Best Epoch:', self.best_epoch, 'Best Loss:', self.best_result)
 
-    def update(self, epoch, result, params, print_=True):
-        """Updates the best performance and model params if necessary."""
-        if print_:
-            self.print_(epoch, result)
-
-        if self.min_or_max == 'min' and result < self.best_result:
+    def update(self, epoch, result, params, c_graph):
+        """Updates the best performance and model params."""
+        if result < self.best_result:
+            self.best_epoch = epoch
             self.best_result = result
             self.best_params = params
-        elif self.min_or_max == 'max' and result > self.best_result:
-            self.best_result = result
-            self.best_params = params
+            self.best_c_graph = c_graph
 
     def get(self):
         return self.best_params
 
 
-def train_rsgnn(flags, graph, rng, lbl, nlbl, new_centers_indices):
+def train_rsgnn(flags, graph, lbl, nlbl, new_centers_indices):
     """Trainer function for RS-GNN."""
     features = graph['nodes']
     n_nodes = graph['n_node'][0]
     labels = torch.cat([torch.ones(n_nodes), -torch.ones(n_nodes)], dim=0)
-    num_reps = flags.num_reps if lbl is None else flags.num_reps + len(lbl) 
+    num_reps = flags.num_reps if lbl is None else flags.num_reps + len(lbl)
     model = rsgnn_models.RSGNN(nfeat=features.shape[1], hid_dim=flags.hid_dim, num_reps=num_reps,
                                new_centers_indices=new_centers_indices)
     optimizer = optim.Adam(model.parameters(), lr=flags.lr, weight_decay=0.0)
@@ -83,6 +77,7 @@ def train_rsgnn(flags, graph, rng, lbl, nlbl, new_centers_indices):
             dgi_loss = -torch.sum(torch.nn.functional.logsigmoid(labels * logits))
             print(dgi_loss)
             print(cluster_loss)
+            '''
             outputs = torch.sigmoid(outputs).mean(dim=1, keepdim=True)
 
             if np.any(lbl == None):
@@ -98,7 +93,8 @@ def train_rsgnn(flags, graph, rng, lbl, nlbl, new_centers_indices):
                 bce_loss = bceloss(outputs, targets)
 
             print(bce_loss)
-            return dgi_loss + flags.cluster_loss_lambda * cluster_loss + flags.bce_loss_lambda * bce_loss
+            '''
+            return flags.DGI_loss_lambda * dgi_loss + flags.cluster_loss_lambda * cluster_loss
 
         optimizer.zero_grad()
         loss = loss_fn()
@@ -106,16 +102,18 @@ def train_rsgnn(flags, graph, rng, lbl, nlbl, new_centers_indices):
         optimizer.step()
         return optimizer, loss.item()
 
-    best_keeper = BestKeeper('min')
+    best_keeper = BestKeeper()
 
     for epoch in range(1, flags.epochs + 1):
         c_graph = corrupt_graph()
         optimizer, loss = train_step(optimizer, graph, c_graph)
         print('Epoch:', epoch, 'Loss:', loss)
-        if epoch % flags.valid_each == 0:
-            best_keeper.update(epoch, loss, model.state_dict())
+        best_keeper.update(epoch, loss, model.state_dict(), c_graph)
+
+    best_keeper.print_()
 
     model.load_state_dict(best_keeper.get())
-    h, centers, rep_ids, _, _ = model(graph, c_graph, lbl)
+    best_c_graph = best_keeper.best_c_graph
+    h, centers, rep_ids, _, _ = model(graph, best_c_graph, lbl)
 
     return centers, rep_ids.numpy()
