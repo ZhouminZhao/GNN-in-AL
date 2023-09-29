@@ -25,7 +25,7 @@ parser.add_argument("--gcn_c_hid_dim", type=int, default=32,
                     help="GCN-C hidden dimension.")
 parser.add_argument("--rsgnn_hid_dim", type=int, default=128,
                     help="RS-GNN hidden dimension.")
-parser.add_argument("--rsgnn_epochs", type=int, default=10,
+parser.add_argument("--rsgnn_epochs", type=int, default=20,
                     help="Number of RS-GNN epochs.")
 parser.add_argument("--gcn_c_epochs", type=int, default=1000,
                     help="Number of epochs for GCN-C.")
@@ -33,7 +33,7 @@ parser.add_argument("--num_reps_multiplier", type=int, default=100,
                     help="num_reps = num_class * num_reps_multiplier.")
 parser.add_argument("--num_valid_nodes", type=int, default=500,
                     help="Number of validation set nodes.")
-parser.add_argument("--lr", type=float, default=0.015,
+parser.add_argument("--lr", type=float, default=0.001,
                     help="Learning rate.")
 parser.add_argument("--drop_rate", type=float, default=0.5,
                     help="Dropout probability.")

@@ -73,7 +73,7 @@ def train_rsgnn(flags, graph, lbl, nlbl, new_centers_indices):
 
     def train_step(optimizer, graph, c_graph):
         def loss_fn():
-            outputs, _, _, cluster_loss, logits = model(graph, c_graph, lbl)
+            outputs, _, _, cluster_loss, logits = model(graph, c_graph, train=True, lbl=lbl)
             dgi_loss = -torch.sum(torch.nn.functional.logsigmoid(labels * logits))
             print(dgi_loss)
             print(cluster_loss)
@@ -114,6 +114,6 @@ def train_rsgnn(flags, graph, lbl, nlbl, new_centers_indices):
 
     model.load_state_dict(best_keeper.get())
     best_c_graph = best_keeper.best_c_graph
-    h, centers, rep_ids, _, _ = model(graph, best_c_graph, lbl)
+    _, centers, rep_ids, _, _ = model(graph, best_c_graph, train=False, lbl=lbl)
 
     return centers, rep_ids.numpy()

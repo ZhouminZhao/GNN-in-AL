@@ -58,20 +58,6 @@ def get_features(models, train_loader):
     return feat
 
 
-def get_features_centers(models, train_loader):
-    models['backbone'].eval()
-    with torch.cuda.device(CUDA_VISIBLE_DEVICES):
-        features = torch.tensor([]).cuda()
-    with torch.no_grad():
-        for inputs, _, _ in train_loader:
-            with torch.cuda.device(CUDA_VISIBLE_DEVICES):
-                inputs = inputs.cuda()
-                _, features_batch, _ = models['backbone'](inputs)
-            features = torch.cat((features, features_batch), 0)
-        feat = features  # .detach().cpu().numpy()
-    return feat
-
-
 def aff_to_adj(x, y=None):
     adj = np.matmul(x, x.transpose())
     adj -= np.eye(adj.shape[0])
@@ -148,8 +134,8 @@ if __name__ == '__main__':
             schedulers = {'backbone': sched_backbone}
 
             # Training and testing
-            train(models, method, criterion, optimizers, schedulers, dataloaders, args.no_of_epochs, EPOCHL)
-            acc = test(models, EPOCH, method, dataloaders, mode='test')
+            train(models, criterion, optimizers, schedulers, dataloaders, args.no_of_epochs)
+            acc = test(models, dataloaders, mode='test')
             print('Trial {}/{} || Cycle {}/{} || Label set size {}: Test acc {}'.format(trial + 1, TRIALS, cycle + 1,
                                                                                         CYCLES, len(labeled_set), acc))
             np.array([method, trial + 1, TRIALS, cycle + 1, CYCLES, len(labeled_set), acc]).tofile(results, sep=" ")

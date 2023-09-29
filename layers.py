@@ -15,9 +15,6 @@
 
 import torch
 import torch.nn as nn
-from gcn_model import GCN
-from load_dataset import load_dataset
-from data_utils import knn_similarity_graph
 
 
 class Activation(nn.Module):
@@ -61,7 +58,7 @@ class EucCluster(nn.Module):
         self.are_centers_initialized = new_centers_indices is None
         self.centers = nn.Parameter(self.init_fn(torch.empty(self.num_reps, d_model)))
 
-    def forward(self, x, lbl=None):
+    def forward(self, x, train, lbl=None):
         if not self.are_centers_initialized:
             self.are_centers_initialized = True
             # Initialize representatives with embeddings of provided node indices
@@ -72,7 +69,28 @@ class EucCluster(nn.Module):
             with torch.no_grad():
                 self.centers[:len(lbl)].set_(x[lbl])
         dists = torch.cdist(x, self.centers, p=2, compute_mode="donot_use_mm_for_euclid_dist")
-        return find_unique_min_indices(dists, lbl=lbl), torch.min(dists, dim=1)[0], self.centers
+        if train:
+            return find_unique_min_indices_train(dists), torch.min(dists, dim=1)[0], self.centers
+        else:
+            return find_unique_min_indices(dists, lbl=lbl), torch.min(dists, dim=1)[0], self.centers
+
+
+def find_unique_min_indices_train(dists):
+    n, m = dists.shape
+    unique_min_indices = torch.zeros(m, dtype=torch.long)
+    found_indices = set()
+    for i in range(m):
+        col = dists[:, i]
+        min_val = float('inf')
+        min_idx = -1
+        for j in range(n):
+            if j not in found_indices and col[j] < min_val:
+                min_val = col[j]
+                min_idx = j
+        if min_idx != -1:
+            unique_min_indices[i] = min_idx
+            found_indices.add(min_idx)
+    return unique_min_indices
 
 
 # TODO: technically the result is only used at inference, so perhaps use costly version below but only outside training

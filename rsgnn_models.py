@@ -96,7 +96,6 @@ class DGI(nn.Module):
         nodes2, _ = self.gcn(c_graph['nodes'], c_graph['adj'], train=True)
         summary = layers.dgi_readout(nodes1)
         nodes = torch.cat([nodes1, nodes2], dim=0)
-        bilinear = layers.Bilinear(nodes.shape[-1], summary.shape[-1])
         logits = self.bilinear(nodes, summary)
         return (nodes1, nodes2, summary), logits
 
@@ -110,10 +109,10 @@ class RSGNN(nn.Module):
         self.dgi = DGI(nfeat, hid_dim)
         self.cluster = Cluster(self.num_reps, hid_dim, new_centers_indices=new_centers_indices)
 
-    def forward(self, graph, c_graph, lbl=None):
+    def forward(self, graph, c_graph, train, lbl=None):
         (h, _, _), logits = self.dgi(graph, c_graph)
         h = layers.normalize(h)
-        centers, rep_ids, cluster_loss = self.cluster(h, lbl=lbl)  # TODO: SUBSET comes from config. self.cluster(h[:SUBSET])
+        centers, rep_ids, cluster_loss = self.cluster(h, train, lbl=lbl)  # TODO: SUBSET comes from config. self.cluster(h[:SUBSET])
         return h, centers, rep_ids, cluster_loss, logits
 
 
@@ -125,7 +124,7 @@ class Cluster(nn.Module):
         self.num_reps = num_reps
         self.cluster = layers.EucCluster(num_reps, hid_dim, new_centers_indices=new_centers_indices)
 
-    def forward(self, embs, lbl=None):
-        rep_ids, cluster_dists, centers = self.cluster(embs, lbl=lbl)
+    def forward(self, embs, train, lbl=None):
+        rep_ids, cluster_dists, centers = self.cluster(embs, train, lbl=lbl)
         loss = torch.sum(cluster_dists)
         return centers, rep_ids, loss
